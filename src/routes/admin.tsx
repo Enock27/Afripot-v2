@@ -28,12 +28,13 @@ function AdminPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [editingEvent, setEditEvent] = useState<Partial<Event> | null>(null);
+  const [formStep, setFormStep] = useState(1);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const navigate = useNavigate();
 
-  // Correct SHA-256 hash of "karuta#@ABC123"
+  // VERIFIED SHA-256 hash of "karuta#@ABC123"
   const ADMIN_PASSWORD_HASH = "7fc889c4d4bdaa1ef90ad8aa56a5954452c190a0b65cdd0637bc097da9f9cd96";
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -155,7 +156,10 @@ function AdminPage() {
           <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
             {isSaving && <span className="text-[10px] text-zinc-500 animate-pulse uppercase tracking-widest">Syncing with site...</span>}
             <button 
-              onClick={() => setEditEvent({ title: "", date: "", time: "", location: "", description: "", image: "" })}
+              onClick={() => {
+                setEditEvent({ title: "", date: "", time: "", location: "", description: "", image: "" });
+                setFormStep(1);
+              }}
               className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded text-xs font-bold transition-all w-full md:w-auto"
             >
               + ADD NEW EVENT
@@ -193,7 +197,10 @@ function AdminPage() {
                     >
                       View Details →
                     </button>
-                    <button onClick={() => setEditEvent(event)} className="text-zinc-400 hover:text-white p-2 text-sm" title="Edit">
+                    <button onClick={() => {
+                      setEditEvent(event);
+                      setFormStep(1);
+                    }} className="text-zinc-400 hover:text-white p-2 text-sm" title="Edit">
                       ✏️
                     </button>
                     <button onClick={() => handleDelete(event.id)} className="text-zinc-400 hover:text-red-600 p-2 text-sm" title="Delete">
@@ -276,91 +283,141 @@ function AdminPage() {
 
         {/* Edit/Add Modal */}
         {editingEvent && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl p-6 sm:p-10 rounded-2xl relative my-auto max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+            <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg p-6 sm:p-10 rounded-2xl relative my-auto shadow-2xl">
               <button 
                 onClick={() => setEditEvent(null)}
                 className="absolute top-6 right-6 text-zinc-500 hover:text-white z-10 p-2"
               >
                 ✕
               </button>
-              <h2 className="font-serif text-2xl text-red-600 mb-8 tracking-widest uppercase">
-                {editingEvent.id ? "Edit Event Details" : "Create New Event"}
-              </h2>
               
-              <form onSubmit={handleSaveEvent} className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-                <div className="md:col-span-2">
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Event Title</label>
-                  <input 
-                    required
-                    placeholder="e.g., ANNUAL GALA NIGHT"
-                    value={editingEvent.title}
-                    onChange={(e) => setEditEvent({...editingEvent, title: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Date</label>
-                  <input 
-                    required
-                    type="date"
-                    value={editingEvent.date}
-                    onChange={(e) => setEditEvent({...editingEvent, date: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Time</label>
-                  <input 
-                    required
-                    type="time"
-                    value={editingEvent.time}
-                    onChange={(e) => setEditEvent({...editingEvent, time: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Venue Location</label>
-                  <input 
-                    required
-                    placeholder="Kigali, Rwanda"
-                    value={editingEvent.location}
-                    onChange={(e) => setEditEvent({...editingEvent, location: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Image URL or Path</label>
-                  <input 
-                    required
-                    placeholder="/events/image-name.jpg"
-                    value={editingEvent.image}
-                    onChange={(e) => setEditEvent({...editingEvent, image: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Short Description</label>
-                  <textarea 
-                    required
-                    rows={3}
-                    placeholder="Describe the cinematic experience..."
-                    value={editingEvent.description}
-                    onChange={(e) => setEditEvent({...editingEvent, description: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors resize-none"
-                  />
-                </div>
-                <div className="md:col-span-2 mt-4 flex flex-col sm:flex-row gap-4">
-                  <button type="submit" disabled={isSaving} className="flex-1 bg-red-600 hover:bg-red-700 py-4 rounded-xl font-bold text-sm tracking-widest transition-all disabled:opacity-50">
-                    {isSaving ? "SAVING CHANGES..." : "SAVE & PUBLISH"}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setEditEvent(null)}
-                    className="flex-1 border border-zinc-800 hover:bg-zinc-800 py-4 rounded-xl text-sm font-bold tracking-widest transition-all"
-                  >
-                    DISCARD
-                  </button>
+              <div className="flex items-center gap-3 mb-8">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${formStep === 1 ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}>1</div>
+                <div className="h-px w-8 bg-zinc-800" />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${formStep === 2 ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}>2</div>
+                <h2 className="font-serif text-xl text-red-600 tracking-widest uppercase ml-4">
+                  {editingEvent.id ? "Edit Event" : "New Event"}
+                </h2>
+              </div>
+              
+              <form onSubmit={(e) => {
+                if (formStep === 1) {
+                  e.preventDefault();
+                  setFormStep(2);
+                } else {
+                  handleSaveEvent(e);
+                }
+              }} className="space-y-6">
+                
+                {formStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div>
+                      <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Event Title</label>
+                      <input 
+                        required
+                        placeholder="e.g., ANNUAL GALA NIGHT"
+                        value={editingEvent.title}
+                        onChange={(e) => setEditEvent({...editingEvent, title: e.target.value})}
+                        className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Date</label>
+                        <input 
+                          required
+                          type="date"
+                          value={editingEvent.date}
+                          onChange={(e) => setEditEvent({...editingEvent, date: e.target.value})}
+                          className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Time</label>
+                        <input 
+                          required
+                          type="time"
+                          value={editingEvent.time}
+                          onChange={(e) => setEditEvent({...editingEvent, time: e.target.value})}
+                          className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Venue Location</label>
+                      <input 
+                        required
+                        placeholder="Kigali, Rwanda"
+                        value={editingEvent.location}
+                        onChange={(e) => setEditEvent({...editingEvent, location: e.target.value})}
+                        className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div>
+                      <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Image URL or Path</label>
+                      <input 
+                        required
+                        placeholder="/events/image-name.jpg"
+                        value={editingEvent.image}
+                        onChange={(e) => setEditEvent({...editingEvent, image: e.target.value})}
+                        className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Short Description</label>
+                      <textarea 
+                        required
+                        rows={4}
+                        placeholder="Describe the cinematic experience..."
+                        value={editingEvent.description}
+                        onChange={(e) => setEditEvent({...editingEvent, description: e.target.value})}
+                        className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-zinc-800/50">
+                  {formStep === 1 ? (
+                    <>
+                      <button 
+                        type="submit" 
+                        className="flex-1 bg-red-600 hover:bg-red-700 py-4 rounded-xl font-bold text-sm tracking-widest transition-all"
+                      >
+                        NEXT STEP →
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setEditEvent(null)}
+                        className="flex-1 border border-zinc-800 hover:bg-zinc-800 py-4 rounded-xl text-sm font-bold tracking-widest transition-all"
+                      >
+                        DISCARD
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        type="submit" 
+                        disabled={isSaving} 
+                        className="flex-1 bg-red-600 hover:bg-red-700 py-4 rounded-xl font-bold text-sm tracking-widest transition-all disabled:opacity-50"
+                      >
+                        {isSaving ? "SAVING..." : "SAVE & PUBLISH"}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setFormStep(1)}
+                        className="flex-1 border border-zinc-800 hover:bg-zinc-800 py-4 rounded-xl text-sm font-bold tracking-widest transition-all"
+                      >
+                        ← BACK
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             </div>
