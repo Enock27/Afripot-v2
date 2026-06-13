@@ -1,108 +1,50 @@
-import afroMusic1 from "@/assets/AfroMusic1.jpg";
-import afroMusic2 from "@/assets/AfroMusic2.jpg";
-
 export interface Event {
   id: string;
   title: string;
   date: string;
-  day: string;
   time: string;
+  location: string;
   description: string;
-  artist?: string;
-  category: "music" | "dining" | "cultural" | "special";
   image: string;
-  banner?: string;
-  attendees?: number;
-  featured?: boolean;
+  isFeatured?: boolean;
 }
 
 export const upcomingEvents: Event[] = [
   {
     id: "1",
-    title: "Live Afro Jazz Night",
-    date: "Friday, May 24",
-    day: "Friday",
-    time: "19:00 - 23:00",
-    description: "Experience the smooth rhythms of Afro Jazz with our featured artist. A night of soulful music, delicious food, and great company.",
-    artist: "The Kigali Jazz Collective",
-    category: "music",
-    image: afroMusic1,
-    banner: afroMusic2,
-    attendees: 45,
-    featured: true,
+    title: "ANNUAL GALA NIGHT 2025",
+    date: "Saturday, August 16, 2025",
+    time: "7:00 PM",
+    location: "Kigali Convention Centre, Rwanda",
+    description: "An exclusive evening celebrating excellence, community, and vision. Join us for an unforgettable night of music, food, and culture.",
+    image: "/src/assets/eventBannerUI/eventBanner1.jpg",
+    isFeatured: true,
   },
   {
     id: "2",
-    title: "Traditional African Cooking Class",
-    date: "Saturday, May 25",
-    day: "Saturday",
-    time: "14:00 - 17:00",
-    description: "Learn to prepare authentic African dishes from our master chefs. Hands-on experience with traditional cooking techniques.",
-    category: "dining",
-    image: afroMusic2,
-    banner: afroMusic2,
-    attendees: 20,
+    title: "LEADERSHIP SUMMIT",
+    date: "July 5, 2025",
+    time: "9:00 AM - 4:00 PM",
+    location: "Kigali",
+    description: "Empowering the next generation of leaders with insights from industry experts.",
+    image: "/src/assets/AfroMusic1.jpg",
   },
   {
     id: "3",
-    title: "Cultural Heritage Celebration",
-    date: "Sunday, May 26",
-    day: "Sunday",
-    time: "18:00 - 22:00",
-    description: "Celebrate African culture with traditional performances, storytelling, and a special menu featuring dishes from across the continent.",
-    category: "cultural",
-    image: afroMusic1,
-    banner: afroMusic1,
-    attendees: 60,
+    title: "TECH INNOVATION EXPO",
+    date: "July 20, 2025",
+    time: "10:00 AM - 6:00 PM",
+    location: "Kigali",
+    description: "Discover the latest in technology and innovation from across the continent.",
+    image: "/src/assets/AfroMusic2.jpg",
   },
   {
     id: "4",
-    title: "Wine & Dine Evening",
-    date: "Wednesday, May 29",
-    day: "Wednesday",
-    time: "19:30 - 22:30",
-    description: "Pair our signature dishes with carefully selected wines. An evening of culinary excellence and refined taste.",
-    category: "special",
-    image: afroMusic2,
-    banner: afroMusic2,
-    attendees: 35,
-  },
-  {
-    id: "5",
-    title: "Live Reggae & Soul",
-    date: "Friday, May 31",
-    day: "Friday",
-    time: "20:00 - 23:30",
-    description: "Feel the vibes with live reggae and soul music. Dance, eat, and celebrate the African spirit.",
-    artist: "Rhythm & Soul Band",
-    category: "music",
-    image: afroMusic2,
-    banner: afroMusic2,
-    attendees: 50,
-  },
-];
-
-export const pastEvents: Event[] = [
-  {
-    id: "p1",
-    title: "Kigali Food Festival",
-    date: "May 15",
-    day: "Wednesday",
-    time: "17:00 - 21:00",
-    description: "A celebration of Kigali's diverse culinary scene.",
-    category: "dining",
-    image: afroMusic1,
-    attendees: 120,
-  },
-  {
-    id: "p2",
-    title: "African Storytelling Night",
-    date: "May 10",
-    day: "Friday",
-    time: "19:00 - 21:00",
-    description: "Traditional stories from across Africa.",
-    category: "cultural",
-    image: afroMusic2,
-    attendees: 75,
+    title: "COMMUNITY AWARDS NIGHT",
+    date: "August 2, 2025",
+    time: "6:30 PM - 10:30 PM",
+    location: "Musanze",
+    description: "Honoring those who make a difference in our communities.",
+    image: "/src/assets/AfroMusic1.jpg",
   },
 ];

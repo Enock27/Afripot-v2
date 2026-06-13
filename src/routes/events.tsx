@@ -1,47 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-
-/* ============================================
-   ADMIN CONFIG — Edit these to update your event
-   ============================================ */
-const EVENT_CONFIG = {
-  bannerImage: "/src/assets/eventBannerUI/eventBanner1.jpg", // Replace with your banner image filename
-  eventTitle: "ANNUAL GALA NIGHT 2025",
-  eventDate: "Saturday, August 16, 2025",
-  eventTime: "7:00 PM",
-  eventLocation: "Kigali Convention Centre, Rwanda",
-  eventDescription: "An exclusive evening celebrating excellence, community, and vision. Join us for an unforgettable night of music, food, and culture.",
-  registerLink: "/reservation", // Replace with your registration URL
-
-  // UPCOMING EVENTS CARDS — add or remove cards here
-  upcomingEvents: [
-    {
-      title: "LEADERSHIP SUMMIT",
-      date: "July 5, 2025",
-      location: "Kigali",
-      image: "/src/assets/AfroMusic1.jpg"
-    },
-    {
-      title: "TECH INNOVATION EXPO",
-      date: "July 20, 2025",
-      location: "Kigali",
-      image: "/src/assets/AfroMusic2.jpg"
-    },
-    {
-      title: "COMMUNITY AWARDS NIGHT",
-      date: "August 2, 2025",
-      location: "Musanze",
-      image: "/src/assets/AfroMusic1.jpg"
-    }
-  ]
-};
-/* ============================================
-   END OF ADMIN CONFIG — Do not edit below
-   ============================================ */
+import { getEvents } from "@/lib/events.server";
 
 export const Route = createFileRoute("/events")({
+  loader: () => getEvents(),
   component: EventsPage,
   head: () => ({
     meta: [
@@ -60,6 +24,8 @@ export const Route = createFileRoute("/events")({
 });
 
 function EventsPage() {
+  const upcomingEvents = Route.useLoaderData();
+
   useEffect(() => {
     // Intersection Observer for reveal animations
     const observerOptions = {
@@ -82,7 +48,12 @@ function EventsPage() {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [upcomingEvents]);
+
+  const featuredEvent = upcomingEvents.find(e => e.isFeatured) || upcomingEvents[0];
+  const moreEvents = upcomingEvents.filter(e => e.id !== featuredEvent?.id);
+
+  if (!featuredEvent) return null;
 
   return (
     <div style={styles.pageWrapper}>
@@ -111,8 +82,8 @@ function EventsPage() {
             
             <div style={styles.bannerImageContainer}>
               <img 
-                src={EVENT_CONFIG.bannerImage} 
-                alt={EVENT_CONFIG.eventTitle}
+                src={featuredEvent.image} 
+                alt={featuredEvent.title}
                 style={styles.bannerImage}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -126,66 +97,64 @@ function EventsPage() {
           {/* Event Details Block */}
           <div style={styles.detailsBlock} className="reveal">
             <div style={styles.detailsLeft}>
-              <h2 style={styles.featuredTitle}>{EVENT_CONFIG.eventTitle}</h2>
-              <p style={styles.featuredDesc}>{EVENT_CONFIG.eventDescription}</p>
+              <h2 style={styles.featuredTitle}>{featuredEvent.title}</h2>
+              <p style={styles.featuredDesc}>{featuredEvent.description}</p>
             </div>
             
             <div style={styles.detailsRight}>
               <div style={styles.metaRow}>
-                <span style={styles.datePill}>{EVENT_CONFIG.eventDate}</span>
+                <span style={styles.datePill}>{featuredEvent.date}</span>
               </div>
               <div style={styles.metaRow}>
                 <span style={styles.metaIcon}>🕒</span>
-                <span style={styles.metaText}>{EVENT_CONFIG.eventTime}</span>
+                <span style={styles.metaText}>{featuredEvent.time}</span>
               </div>
               <div style={styles.metaRow}>
                 <span style={styles.metaIcon}>📍</span>
-                <span style={styles.metaText}>{EVENT_CONFIG.eventLocation}</span>
+                <span style={styles.metaText}>{featuredEvent.location}</span>
               </div>
-              
-              <a href={EVENT_CONFIG.registerLink} style={styles.ctaButton}>
-                REGISTER NOW →
-              </a>
             </div>
           </div>
         </div>
       </section>
 
       {/* 4. UPCOMING EVENTS GRID */}
-      <section style={styles.gridSection}>
-        <div style={styles.container}>
-          <h2 style={styles.sectionTitle} className="reveal">MORE EVENTS</h2>
-          <div style={styles.heroDivider} className="reveal"></div>
-          
-          <div style={styles.eventsGrid}>
-            {EVENT_CONFIG.upcomingEvents.map((event, index) => (
-              <div 
-                key={index} 
-                className="event-card reveal" 
-                style={{...styles.card, transitionDelay: `${index * 0.1}s`}}
-              >
-                <div style={styles.cardImageArea}>
-                  <img 
-                    src={event.image} 
-                    alt={event.title} 
-                    style={styles.cardImage}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
-                    }}
-                  />
-                  <div style={styles.cardDateBadge}>{event.date}</div>
+      {moreEvents.length > 0 && (
+        <section style={styles.gridSection}>
+          <div style={styles.container}>
+            <h2 style={styles.sectionTitle} className="reveal">MORE EVENTS</h2>
+            <div style={styles.heroDivider} className="reveal"></div>
+            
+            <div style={styles.eventsGrid}>
+              {moreEvents.map((event, index) => (
+                <div 
+                  key={event.id} 
+                  className="event-card reveal" 
+                  style={{...styles.card, transitionDelay: `${index * 0.1}s`}}
+                >
+                  <div style={styles.cardImageArea}>
+                    <img 
+                      src={event.image} 
+                      alt={event.title} 
+                      style={styles.cardImage}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+                      }}
+                    />
+                    <div style={styles.cardDateBadge}>{event.date}</div>
+                  </div>
+                  <div style={styles.cardBody}>
+                    <h3 style={styles.cardTitle}>{event.title}</h3>
+                    <p style={styles.cardLocation}>{event.location}</p>
+                    <a href="#" className="card-link">View Details →</a>
+                  </div>
                 </div>
-                <div style={styles.cardBody}>
-                  <h3 style={styles.cardTitle}>{event.title}</h3>
-                  <p style={styles.cardLocation}>{event.location}</p>
-                  <a href="#" className="card-link">View Details →</a>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 5. FOOTER */}
       <SiteFooter />
