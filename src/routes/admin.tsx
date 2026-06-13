@@ -4,31 +4,55 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { updateEvents, getEvents } from "@/lib/events.server";
 import { Event } from "@/data/eventsData";
+import { Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   loader: () => getEvents(),
   component: AdminPage,
 });
 
+/**
+ * UTILITY: Hash a string using SHA-256
+ */
+async function hashPassword(password: string) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function AdminPage() {
   const initialEvents = Route.useLoaderData();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [editingEvent, setEditEvent] = useState<Partial<Event> | null>(null);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const navigate = useNavigate();
 
-  // Simple hardcoded password
-  const ADMIN_PASSWORD = "admin"; 
+  // Correct SHA-256 hash of "karuta#@ABC123"
+  const ADMIN_PASSWORD_HASH = "7fc889c4d4bdaa1ef90ad8aa56a5954452c190a0b65cdd0637bc097da9f9cd96";
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-    } else {
-      alert("Invalid password");
+    setIsAuthenticating(true);
+    
+    try {
+      const enteredHash = await hashPassword(password);
+      if (enteredHash === ADMIN_PASSWORD_HASH) {
+        setIsAuthenticated(true);
+      } else {
+        alert("Invalid credentials. Please try again.");
+        setPassword("");
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+      alert("Authentication failed.");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -63,9 +87,6 @@ function AdminPage() {
     if (!editingEvent) return;
 
     let updatedEvents: Event[];
-    
-    // We no longer need manual 'isFeatured' logic because the system
-    // will auto-feature the nearest event based on the sorted list.
     const cleanedEvent = { ...editingEvent as Event };
 
     if (editingEvent.id) {
@@ -87,19 +108,34 @@ function AdminPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-        <h1 className="font-serif text-3xl text-red-600 mb-8 tracking-widest uppercase">Admin Access</h1>
+        <h1 className="font-serif text-3xl text-red-600 mb-8 tracking-widest uppercase text-center">Admin Access</h1>
         <form onSubmit={handleLogin} className="w-full max-w-sm flex flex-col gap-4">
-          <input 
-            type="password" 
-            placeholder="Enter Admin Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 p-4 rounded text-center outline-none focus:border-red-600 transition-colors"
-          />
-          <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded transition-all">
-            UNLOCK DASHBOARD
+          <div className="relative">
+            <input 
+              type={showPassword ? "text" : "password"} 
+              placeholder="Enter Admin Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isAuthenticating}
+              className="w-full bg-zinc-900 border border-zinc-800 p-4 pr-12 rounded text-center outline-none focus:border-red-600 transition-colors disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+          <button 
+            type="submit" 
+            disabled={isAuthenticating}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded transition-all disabled:opacity-50 tracking-widest"
+          >
+            {isAuthenticating ? "VERIFYING..." : "UNLOCK DASHBOARD"}
           </button>
         </form>
+        <p className="mt-8 text-[10px] text-zinc-600 uppercase tracking-widest">Protected by SHA-256 Encryption</p>
       </div>
     );
   }
@@ -229,6 +265,14 @@ function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Production Warning */}
+        <div className="mt-12 p-4 bg-red-950/20 border border-red-900/30 rounded-lg">
+          <p className="text-[10px] text-red-500 font-bold uppercase tracking-[0.2em] mb-1">⚠️ Hosting Tip</p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            This manager currently writes to a local file. To ensure images work after hosting, place them in the <code className="text-white">public/events/</code> folder and refer to them as <code className="text-white">/events/filename.jpg</code>.
+          </p>
+        </div>
 
         {/* Edit/Add Modal */}
         {editingEvent && (
