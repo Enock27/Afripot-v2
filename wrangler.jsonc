@@ -1,0 +1,20 @@
+// {
+//   "$schema": "node_modules/wrangler/config-schema.json",
+//   "name": "tanstack-start-app",
+//   "compatibility_date": "2025-09-24",
+//   "compatibility_flags": ["nodejs_compat"],
+//   "main": "@tanstack/react-start/server-entry",
+// }
+
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tanstack-start-app",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "dist/server/index.js",
+  "assets": {
+    "directory": "dist/client"
+  },
+  "workers_dev": true,
+  "preview_urls": false
+}

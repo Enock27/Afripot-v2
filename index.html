@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Events — AfriPot Restaurant</title>
+  
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
+
+  <style>
+    /* 
+    ===========================================
+    DESIGN SYSTEM & RESET
+    =========================================== 
+    */
+    :root {
+      --black:      #000000;
+      --black-soft: #111111;
+      --black-mid:  #1a1a1a;
+      --white:      #FFFFFF;
+      --white-muted:#CCCCCC;
+      --grey:       #999999;
+      --red:        #CC0000;
+      --red-bright: #FF0000;
+      --red-dark:   #990000;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--black);
+      color: var(--white);
+      font-family: 'Quicksand', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, .brand {
+      font-family: 'Julius Sans One', sans-serif;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+    }
+
+    a {
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* 
+    ===========================================
+    NAVBAR
+    =========================================== 
+    */
+    nav {
+      position: sticky;
+      top: 0;
+      background: var(--black);
+      z-index: 1000;
+      padding: 20px 0;
+      border-bottom: 2px solid var(--red);
+      transition: box-shadow 0.3s ease;
+    }
+
+    nav.scrolled {
+      box-shadow: 0 2px 20px rgba(204, 0, 0, 0.3);
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      color: var(--red);
+      font-size: 1.4rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 30px;
+    }
+
+    .nav-links a {
+      color: var(--white);
+      font-weight: 500;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--red);
+    }
+
+    .hamburger {
+      display: none;
+      cursor: pointer;
+      color: var(--red);
+      font-size: 1.5rem;
+    }
+
+    /* 
+    ===========================================
+    HERO
+    =========================================== 
+    */
+    .hero {
+      min-height: 35vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 20px;
+      background: var(--black);
+      background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(204, 0, 0, 0.03) 50px),
+        repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(204, 0, 0, 0.03) 50px);
+      background-size: 50px 50px;
+    }
+
+    .hero-eyebrow {
+      color: var(--red);
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      margin-bottom: 20px;
+    }
+
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: var(--red);
+      margin: 0 auto 24px;
+    }
+
+    .hero-tagline {
+      font-weight: 300;
+      color: var(--white-muted);
+      font-size: 1.1rem;
+    }
+
+    /* 
+    ===========================================
+    FEATURED BANNER
+    =========================================== 
+    */
+    .featured {
+      padding: 60px 0;
+    }
+
+    .banner-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      max-height: 600px;
+      margin-bottom: 0;
+    }
+
+    .banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .banner-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    }
+
+    /* Red Corners */
+    .corner {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 3px solid var(--red);
+      z-index: 5;
+    }
+    .c-tl { top: -15px; left: -15px; border-right: 0; border-bottom: 0; }
+    .c-tr { top: -15px; right: -15px; border-left: 0; border-bottom: 0; }
+    .c-bl { bottom: -15px; left: -15px; border-right: 0; border-top: 0; }
+    .c-br { bottom: -15px; right: -15px; border-left: 0; border-top: 0; }
+
+    .details-block {
+      background: var(--black);
+      padding: 40px;
+      border-left: 4px solid var(--red);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+
+    .details-left h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      margin-bottom: 20px;
+    }
+
+    .details-left p {
+      font-weight: 300;
+      color: var(--white-muted);
+      line-height: 1.8;
+    }
+
+    .details-right {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .pill {
+      background: var(--red);
+      color: var(--white);
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-weight: 700;
+      display: inline-block;
+      width: fit-content;
+    }
+
+    .meta-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+
+    .btn-register {
+      background: var(--red);
+      color: var(--white);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 16px 40px;
+      border: none;
+      margin-top: 15px;
+      cursor: pointer;
+      display: inline-block;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .btn-register:hover {
+      background: var(--red-bright);
+      transform: translateY(-2px);
+    }
+
+    /* 
+    ===========================================
+    GRID SECTION
+    =========================================== 
+    */
+    .upcoming {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 50px;
+    }
+
+    .card {
+      background: var(--black-soft);
+      border: 1px solid var(--black-mid);
+      border-left: 4px solid var(--red);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 40px rgba(204, 0, 0, 0.25);
+      border-color: var(--red);
+    }
+
+    .card-img-box {
+      height: 200px;
+      position: relative;
+      background: var(--black-mid);
+    }
+
+    .card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: var(--red);
+      color: var(--white);
+      font-weight: 700;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .card-body h3 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+
+    .card-loc {
+      font-weight: 500;
+      color: var(--grey);
+      font-size: 0.85rem;
+    }
+
+    .card-link {
+      display: block;
+      margin-top: 16px;
+      color: var(--red);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .card-link:hover {
+      color: var(--red-bright);
+    }
+
+    /* 
+    ===========================================
+    FOOTER
+    =========================================== 
+    */
+    footer {
+      background: var(--black);
+      border-top: 3px solid var(--red);
+      padding: 60px 0 30px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 60px;
+      margin-bottom: 40px;
+    }
+
+    .f-brand {
+      color: var(--red);
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+    }
+
+    .f-tagline {
+      color: var(--grey);
+      font-weight: 300;
+      font-size: 0.9rem;
+      max-width: 300px;
+    }
+
+    .f-title {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    .f-links a, .f-info p {
+      color: var(--grey);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .f-links a:hover {
+      color: var(--red);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid var(--black-mid);
+      padding-top: 30px;
+      text-align: center;
+      color: #666;
+      font-size: 0.8rem;
+      font-weight: 300;
+    }
+
+    /* 
+    ===========================================
+    ANIMATIONS & RESPONSIVE
+    =========================================== 
+    */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s ease;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1024px) {
+      .events-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger { display: block; }
+      .details-block { grid-template-columns: 1fr; }
+      .events-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr; gap: 40px; }
+      .footer-grid > div { text-align: center; }
+      .f-tagline { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. NAVIGATION BAR -->
+  <header style="position: sticky; top: 0; left: 0; right: 0; z-index: 50; padding: 0.5rem 0; background-color: rgba(22, 163, 74, 0.8); border-bottom: 1px solid rgba(255, 255, 255, 0.2); transition: transform 0.3s ease-in-out; transform: translateY(0);">
+    <div style="margin: 0 auto; display: flex; max-width: 1600px; align-items: center; justify-content: space-between; padding: 0 1rem;">
+      <a style="line-height: none; position: relative; display: flex; align-items: center; gap: 0.5rem;" href="/">
+        <img src="/src/assets/AfriPot_logo2.png" alt="Restaurant logo" style="width: 4rem; height: 4rem; object-fit: contain; position: relative; z-index: 10;">
+      </a>
+      <button aria-label="Open menu" style="display: flex; align-items: center; gap: 0.5rem; background: none; border: none; cursor: pointer; color: white;">
+        <span style="font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase;">Menu</span>
+        <span style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="display: block; width: 1.25rem; height: 1px; background-color: currentColor;"></span>
+          <span style="display: block; width: 1.25rem; height: 1px; background-color: currentColor;"></span>
+        </span>
+      </button>
+    </div>
+    <!-- Centered Dropdown Menu -->
+    <div id="mobile-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 3rem 0; animation: fadeIn 0.3s ease;">
+      <nav style="display: flex; flex-direction: column; align-items: center; gap: 2rem; text-transform: uppercase; letter-spacing: 0.3em; font-size: 0.85rem;">
+        <a href="/" style="color: white; text-decoration: none; width: 100%; text-align: center;">Home</a>
+        <a href="/menu" style="color: white; text-decoration: none; width: 100%; text-align: center;">Menu</a>
+        <a href="/events" style="color: #CC0000; text-decoration: none; width: 100%; text-align: center;">Events</a>
+        <a href="/about" style="color: white; text-decoration: none; width: 100%; text-align: center;">About</a>
+        <a href="/contact" style="color: white; text-decoration: none; width: 100%; text-align: center;">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 2. HERO SECTION -->
+  <section class="hero reveal">
+    <p class="hero-eyebrow">AfriPot Cuisine</p>
+    <h1>UPCOMING EVENTS</h1>
+    <div class="divider"></div>
+    <p class="hero-tagline">Stay connected. Experience what's next.</p>
+  </section>
+
+  <!-- 3. FEATURED EVENT BANNER SECTION -->
+  <section class="featured">
+    <div class="container">
+      <div class="banner-container reveal">
+        <div class="corner c-tl"></div>
+        <div class="corner c-tr"></div>
+        <div class="corner c-bl"></div>
+        <div class="corner c-br"></div>
+        
+        <img id="featured-img" src="" alt="Featured Event" class="banner-img">
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="details-block reveal">
+        <div class="details-left">
+          <h2 id="featured-title"></h2>
+          <p id="featured-desc"></p>
+        </div>
+        <div class="details-right">
+          <div class="meta-line"><span class="pill" id="featured-date"></span></div>
+          <div class="meta-line"><span>🕒</span> <span id="featured-time"></span></div>
+          <div class="meta-line"><span>📍</span> <span id="featured-loc"></span></div>
+          <a id="featured-link" href="#" class="btn-register">REGISTER NOW →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. UPCOMING EVENTS GRID -->
+  <section class="upcoming">
+    <div class="container">
+      <h2 class="section-title reveal">MORE EVENTS</h2>
+      <div class="divider reveal"></div>
+      
+      <div id="events-grid" class="events-grid">
+        <!-- Dynamic Cards Inserted Here -->
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. FOOTER -->
+  <footer style="border-top: 1px solid rgba(255, 255, 255, 0.1); background-color: #000;">
+    <div style="margin: 0 auto; max-width: 1600px; padding: 3rem 1rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+        <div>
+          <div style="font-family: 'Swanky and Moo Moo', cursive; font-size: 1.5rem; color: #C4A84F; margin-bottom: 0.75rem;">AfriPot</div>
+          <p style="font-size: 0.75rem; color: #999; line-height: 1.6;">Where tradition meets taste. A culinary experience celebrating African heritage.</p>
+        </div>
+        <div>
+          <h4 style="font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #C4A84F; margin-bottom: 0.75rem;">Visit</h4>
+          <p style="font-size: 0.75rem; color: #999; line-height: 1.6;">Nyarugenge 19 KN 51 St<br>Kigali, Rwanda</p>
+        </div>
+        <div>
+          <h4 style="font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #C4A84F; margin-bottom: 0.75rem;">Hours</h4>
+          <p style="font-size: 0.75rem; color: #999; line-height: 1.6;">Mon – Sun<br>9:00 AM – 12:00 AM</p>
+        </div>
+        <div>
+          <h4 style="font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #C4A84F; margin-bottom: 0.75rem;">Navigate</h4>
+          <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.75rem;">
+            <li style="margin-bottom: 0.5rem;"><a href="/menu" style="color: #999; text-decoration: none;">Menu</a></li>
+            <li style="margin-bottom: 0.5rem;"><a href="/about" style="color: #999; text-decoration: none;">About</a></li>
+            <li style="margin-bottom: 0.5rem;"><a href="/contact" style="color: #999; text-decoration: none;">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.75rem; color: #999; letter-spacing: 0.05em;">
+        <p>© 2026 <span style="font-family: 'Swanky and Moo Moo', cursive;">AfriPot</span> Restaurant. All rights reserved.</p>
+        <p style="display: flex; align-items: center; gap: 0.5rem;"><span style="color: #C4A84F;">✦✦</span> Two Michelin Stars</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ============================================
+       ADMIN CONFIG — Edit these to update your event
+       ============================================ */
+    const EVENT_CONFIG = {
+      bannerImage: "src/assets/eventBannerUI/eventBanner1.jpg",         // Replace with your banner image filename
+      eventTitle: "ANNUAL GALA NIGHT 2025",
+      eventDate: "Saturday, August 16, 2025",
+      eventTime: "7:00 PM",
+      eventLocation: "Kigali Convention Centre, Rwanda",
+      eventDescription: "An exclusive evening celebrating excellence, community, and vision. Join us for an unforgettable night of music, food, and culture.",
+      registerLink: "/reservation",                  // Replace with your registration URL
+
+      // UPCOMING EVENTS CARDS — add or remove cards here
+      upcomingEvents: [
+        {
+          title: "LEADERSHIP SUMMIT",
+          date: "July 5, 2025",
+          location: "Kigali",
+          image: "src/assets/AfroMusic1.jpg"
+        },
+        {
+          title: "TECH INNOVATION EXPO",
+          date: "July 20, 2025",
+          location: "Kigali",
+          image: "src/assets/AfroMusic2.jpg"
+        },
+        {
+          title: "COMMUNITY AWARDS NIGHT",
+          date: "August 2, 2025",
+          location: "Musanze",
+          image: "src/assets/AfroMusic1.jpg"
+        }
+      ]
+    };
+    /* ============================================
+       END OF ADMIN CONFIG — Do not edit below
+       ============================================ */
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Populate Featured Event
+      const featImg = document.getElementById('featured-img');
+      featImg.src = EVENT_CONFIG.bannerImage;
+      featImg.onerror = function() {
+        this.style.display = 'none';
+        this.parentElement.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+      };
+
+      document.getElementById('featured-title').textContent = EVENT_CONFIG.eventTitle;
+      document.getElementById('featured-desc').textContent = EVENT_CONFIG.eventDescription;
+      document.getElementById('featured-date').textContent = EVENT_CONFIG.eventDate;
+      document.getElementById('featured-time').textContent = EVENT_CONFIG.eventTime;
+      document.getElementById('featured-loc').textContent = EVENT_CONFIG.eventLocation;
+      document.getElementById('featured-link').href = EVENT_CONFIG.registerLink;
+
+      // 2. Populate Upcoming Grid
+      const grid = document.getElementById('events-grid');
+      EVENT_CONFIG.upcomingEvents.forEach((event, index) => {
+        const card = document.createElement('div');
+        card.className = 'card reveal';
+        card.style.transitionDelay = `${index * 0.1}s`;
+        
+        card.innerHTML = `
+          <div class="card-img-box">
+            <img src="${event.image}" alt="${event.title}" class="card-img" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, #000, #1a0000, #CC0000)'">
+            <div class="card-badge">${event.date}</div>
+          </div>
+          <div class="card-body">
+            <h3>${event.title}</h3>
+            <p class="card-loc">${event.location}</p>
+            <a href="#" class="card-link">View Details →</a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // 3. Scroll Effects
+      const header = document.querySelector('header');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 80) {
+          header.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.3)';
+          header.style.backgroundColor = 'rgba(22, 163, 74, 0.95)';
+        } else {
+          header.style.boxShadow = 'none';
+          header.style.backgroundColor = 'rgba(22, 163, 74, 0.8)';
+        }
+      });
+
+      // 4. Mobile Menu Toggle
+      const menuBtn = document.querySelector('button[aria-label="Open menu"]');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const headerContainer = document.querySelector('header');
+
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent immediate closing
+        const isHidden = mobileMenu.style.display === 'none';
+        mobileMenu.style.display = isHidden ? 'block' : 'none';
+      });
+
+      document.addEventListener('click', (e) => {
+        if (mobileMenu.style.display === 'block' && !headerContainer.contains(e.target)) {
+          mobileMenu.style.display = 'none';
+        }
+      });
+
+      // 5. Reveal Animations
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    });
+  </script>
+</body>
+</html>
