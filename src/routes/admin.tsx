@@ -16,6 +16,7 @@ function AdminPage() {
   const [password, setPassword] = useState("");
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [editingEvent, setEditEvent] = useState<Partial<Event> | null>(null);
+  const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
 
@@ -34,10 +35,17 @@ function AdminPage() {
   const handleSaveToDatabase = async (updatedEvents: Event[]) => {
     setIsSaving(true);
     try {
-      await updateEvents({ data: updatedEvents });
-      setEvents(updatedEvents);
+      // Sort events chronologically: nearest event first
+      const sorted = [...updatedEvents].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      await updateEvents({ data: sorted });
+      setEvents(sorted);
     } catch (error) {
-      alert("⚠️ DATA SYNC ERROR: Changes were not saved to the server. If you are hosting on a serverless platform (like Cloudflare Pages), the filesystem is read-only. Please contact support to enable database storage.");
+      alert("⚠️ DATA SYNC ERROR: Changes were not saved to the server.");
     } finally {
       setIsSaving(false);
     }
@@ -56,21 +64,20 @@ function AdminPage() {
 
     let updatedEvents: Event[];
     
-    // Ensure only ONE event is featured at a time for consistent public banner
-    const currentEventList = editingEvent.isFeatured 
-      ? events.map(ev => ({ ...ev, isFeatured: false })) 
-      : [...events];
+    // We no longer need manual 'isFeatured' logic because the system
+    // will auto-feature the nearest event based on the sorted list.
+    const cleanedEvent = { ...editingEvent as Event };
 
     if (editingEvent.id) {
-      updatedEvents = currentEventList.map(ev => 
-        ev.id === editingEvent.id ? (editingEvent as Event) : ev
+      updatedEvents = events.map(ev => 
+        ev.id === editingEvent.id ? cleanedEvent : ev
       );
     } else {
       const newEvent: Event = {
-        ...editingEvent as Event,
+        ...cleanedEvent,
         id: Date.now().toString(),
       };
-      updatedEvents = [...currentEventList, newEvent];
+      updatedEvents = [...events, newEvent];
     }
     
     await handleSaveToDatabase(updatedEvents);
@@ -106,13 +113,13 @@ function AdminPage() {
           <div>
             <h1 className="font-serif text-4xl text-red-600 tracking-wider mb-2">EVENT MANAGER</h1>
             <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">
-              Centralized Source of Truth for /events
+              Automatic Chronological Ordering (Nearest First)
             </p>
           </div>
           <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
-            {isSaving && <span className="text-[10px] text-zinc-500 animate-pulse uppercase tracking-widest">Updating public site...</span>}
+            {isSaving && <span className="text-[10px] text-zinc-500 animate-pulse uppercase tracking-widest">Syncing with site...</span>}
             <button 
-              onClick={() => setEditEvent({ title: "", date: "", time: "", location: "", description: "", image: "", isFeatured: false })}
+              onClick={() => setEditEvent({ title: "", date: "", time: "", location: "", description: "", image: "" })}
               className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded text-xs font-bold transition-all w-full md:w-auto"
             >
               + ADD NEW EVENT
@@ -128,12 +135,12 @@ function AdminPage() {
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
+          {events.map((event, index) => (
             <div key={event.id} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden group hover:border-red-600 transition-all flex flex-col">
               <div className="h-40 bg-zinc-800 relative">
                 <img src={event.image} alt={event.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                {event.isFeatured && (
-                  <span className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">FEATURED (BANNER)</span>
+                {index === 0 && (
+                  <span className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">AUTO-FEATURED</span>
                 )}
               </div>
               <div className="p-6 flex-1 flex flex-col">
@@ -141,9 +148,15 @@ function AdminPage() {
                 <p className="text-zinc-500 text-xs mb-4 line-clamp-2">{event.description}</p>
                 <div className="mt-auto pt-4 border-t border-zinc-800/50 flex justify-between items-center">
                   <div className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">
-                    {event.date}
+                    {new Date(event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} @ {event.time}
                   </div>
                   <div className="flex gap-2">
+                    <button 
+                      onClick={() => setViewingEvent(event)} 
+                      className="text-red-600 font-bold text-[10px] uppercase tracking-widest hover:text-white transition-colors mr-2"
+                    >
+                      View Details →
+                    </button>
                     <button onClick={() => setEditEvent(event)} className="text-zinc-400 hover:text-white p-2 text-sm" title="Edit">
                       ✏️
                     </button>
@@ -162,13 +175,60 @@ function AdminPage() {
           )}
         </div>
 
-        {/* Production Warning */}
-        <div className="mt-12 p-4 bg-red-950/20 border border-red-900/30 rounded-lg">
-          <p className="text-[10px] text-red-500 font-bold uppercase tracking-[0.2em] mb-1">⚠️ Hosting Tip</p>
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            This manager currently writes to a local file. To ensure images work after hosting, place them in the <code className="text-white">public/events/</code> folder and refer to them as <code className="text-white">/events/filename.jpg</code>.
-          </p>
-        </div>
+        {/* View Modal */}
+        {viewingEvent && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[150] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <div className="bg-zinc-900 border border-zinc-800 w-full max-w-4xl rounded-2xl relative overflow-hidden my-auto shadow-2xl">
+              <button 
+                onClick={() => setViewingEvent(null)}
+                className="absolute top-6 right-6 text-white/50 hover:text-white z-20 bg-black/20 backdrop-blur-md p-2 rounded-full transition-all"
+              >
+                ✕
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="h-64 md:h-full min-h-[300px] relative">
+                  <img src={viewingEvent.image} alt={viewingEvent.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent md:bg-gradient-to-r" />
+                </div>
+                
+                <div className="p-8 sm:p-12 flex flex-col justify-center">
+                  <h2 className="font-serif text-3xl sm:text-4xl text-white mb-6 leading-tight uppercase tracking-wider">{viewingEvent.title}</h2>
+                  
+                  <div className="space-y-4 mb-8">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded uppercase tracking-wider">
+                        {new Date(viewingEvent.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-zinc-400">
+                      <span className="text-lg">🕒</span>
+                      <span className="text-sm font-medium uppercase tracking-widest">{viewingEvent.time}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-zinc-400">
+                      <span className="text-lg">📍</span>
+                      <span className="text-sm font-medium uppercase tracking-widest">{viewingEvent.location}</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-zinc-400 text-sm sm:text-base leading-relaxed mb-10 font-light">
+                    {viewingEvent.description}
+                  </p>
+                  
+                  <button 
+                    onClick={() => {
+                      setEditEvent(viewingEvent);
+                      setViewingEvent(null);
+                    }}
+                    className="w-full bg-white text-black hover:bg-red-600 hover:text-white py-4 rounded-xl font-black text-[10px] tracking-[0.3em] uppercase transition-all shadow-lg"
+                  >
+                    Edit This Event
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit/Add Modal */}
         {editingEvent && (
@@ -196,23 +256,23 @@ function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Display Date</label>
+                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Date</label>
                   <input 
                     required
-                    placeholder="Saturday, August 16"
+                    type="date"
                     value={editingEvent.date}
                     onChange={(e) => setEditEvent({...editingEvent, date: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
+                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
                   />
                 </div>
                 <div>
-                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Time</label>
+                  <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Pick Time</label>
                   <input 
                     required
-                    placeholder="7:00 PM"
+                    type="time"
                     value={editingEvent.time}
                     onChange={(e) => setEditEvent({...editingEvent, time: e.target.value})}
-                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
+                    className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors [color-scheme:dark]"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -234,7 +294,6 @@ function AdminPage() {
                     onChange={(e) => setEditEvent({...editingEvent, image: e.target.value})}
                     className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors"
                   />
-                  <p className="mt-1 text-[9px] text-zinc-600 uppercase font-medium">Tip: Use public URLs or paths starting with /events/</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-zinc-500 text-[10px] font-bold tracking-widest mb-2 uppercase">Short Description</label>
@@ -246,18 +305,6 @@ function AdminPage() {
                     onChange={(e) => setEditEvent({...editingEvent, description: e.target.value})}
                     className="w-full bg-black border border-zinc-800 p-3 rounded-lg text-sm outline-none focus:border-red-600 transition-colors resize-none"
                   />
-                </div>
-                <div className="md:col-span-2 flex items-center gap-3 py-2 bg-black/50 p-4 rounded-lg border border-zinc-800/50">
-                  <input 
-                    type="checkbox"
-                    id="featured-check"
-                    checked={editingEvent.isFeatured}
-                    onChange={(e) => setEditEvent({...editingEvent, isFeatured: e.target.checked})}
-                    className="accent-red-600 w-5 h-5 rounded cursor-pointer"
-                  />
-                  <label htmlFor="featured-check" className="text-xs font-bold uppercase tracking-wider cursor-pointer">
-                    Feature in Cinematic Banner <span className="text-red-600 ml-1">(Main Event)</span>
-                  </label>
                 </div>
                 <div className="md:col-span-2 mt-4 flex flex-col sm:flex-row gap-4">
                   <button type="submit" disabled={isSaving} className="flex-1 bg-red-600 hover:bg-red-700 py-4 rounded-xl font-bold text-sm tracking-widest transition-all disabled:opacity-50">

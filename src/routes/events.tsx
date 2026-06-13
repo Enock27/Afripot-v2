@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getEvents } from "@/lib/events.server";
+import { Event } from "@/data/eventsData";
 
 export const Route = createFileRoute("/events")({
   loader: () => getEvents(),
@@ -24,7 +25,15 @@ export const Route = createFileRoute("/events")({
 });
 
 function EventsPage() {
-  const upcomingEvents = Route.useLoaderData();
+  const upcomingEventsData = Route.useLoaderData();
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  // Auto-sort events: nearest first
+  const upcomingEvents = [...upcomingEventsData].sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}`);
+    const dateB = new Date(`${b.date}T${b.time}`);
+    return dateA.getTime() - dateB.getTime();
+  });
 
   useEffect(() => {
     // Intersection Observer for reveal animations
@@ -50,10 +59,36 @@ function EventsPage() {
     };
   }, [upcomingEvents]);
 
-  const featuredEvent = upcomingEvents.find(e => e.isFeatured) || upcomingEvents[0];
-  const moreEvents = upcomingEvents.filter(e => e.id !== featuredEvent?.id);
+  // The first event in the sorted list is always the featured one
+  const featuredEvent = upcomingEvents[0];
+  const moreEvents = upcomingEvents.slice(1);
 
-  if (!featuredEvent) return null;
+  if (!featuredEvent) return (
+    <div style={styles.pageWrapper}>
+      <SiteHeader />
+      <section style={{...styles.heroSection, minHeight: '60vh'}} className="reveal">
+        <h1 style={styles.heroHeading}>NO UPCOMING EVENTS</h1>
+        <p style={styles.heroTagline}>Check back soon for cultural celebrations and culinary nights.</p>
+      </section>
+      <SiteFooter />
+    </div>
+  );
+
+  const formatDisplayDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-GB', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatShortDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short' 
+    });
+  };
 
   return (
     <div style={styles.pageWrapper}>
@@ -103,7 +138,7 @@ function EventsPage() {
             
             <div style={styles.detailsRight}>
               <div style={styles.metaRow}>
-                <span style={styles.datePill}>{featuredEvent.date}</span>
+                <span style={styles.datePill}>{formatDisplayDate(featuredEvent.date)}</span>
               </div>
               <div style={styles.metaRow}>
                 <span style={styles.metaIcon}>🕒</span>
@@ -111,8 +146,28 @@ function EventsPage() {
               </div>
               <div style={styles.metaRow}>
                 <span style={styles.metaIcon}>📍</span>
-                <span style={styles.metaText}>{featuredEvent.location}</span>
+                <span style={styles.metaText}>Address: {featuredEvent.location}</span>
               </div>
+              
+              <button 
+                onClick={() => setSelectedEvent(featuredEvent)}
+                className="cta-button"
+                style={{
+                  backgroundColor: '#CC0000',
+                  color: 'white',
+                  border: 'none',
+                  padding: '16px 40px',
+                  fontFamily: '"Quicksand", sans-serif',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  marginTop: '20px',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                VIEW FULL DETAILS →
+              </button>
             </div>
           </div>
         </div>
@@ -142,12 +197,24 @@ function EventsPage() {
                         (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
                       }}
                     />
-                    <div style={styles.cardDateBadge}>{event.date}</div>
+                    <div style={styles.cardDateBadge}>{formatShortDate(event.date)}</div>
                   </div>
                   <div style={styles.cardBody}>
                     <h3 style={styles.cardTitle}>{event.title}</h3>
                     <p style={styles.cardLocation}>{event.location}</p>
-                    <a href="#" className="card-link">View Details →</a>
+                    <button 
+                      onClick={() => setSelectedEvent(event)}
+                      className="card-link"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      View Details →
+                    </button>
                   </div>
                 </div>
               ))}
@@ -156,7 +223,133 @@ function EventsPage() {
         </section>
       )}
 
-      {/* 5. FOOTER */}
+      {/* 5. DETAIL OVERLAY MODAL */}
+      {selectedEvent && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            backdropFilter: 'blur(20px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            overflowY: 'auto'
+          }}
+          onClick={() => setSelectedEvent(null)}
+        >
+          <div 
+            style={{
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #1a1a1a',
+              borderRadius: '20px',
+              maxWidth: '900px',
+              width: '100%',
+              overflow: 'hidden',
+              position: 'relative',
+              boxShadow: '0 25px 50px -12px rgba(204, 0, 0, 0.25)',
+              margin: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setSelectedEvent(null)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: 'white',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                fontSize: '20px'
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+              <div style={{ height: '100%', minHeight: '300px', position: 'relative' }}>
+                <img 
+                  src={selectedEvent.image} 
+                  alt={selectedEvent.title} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, #0a0a0a, transparent 40%)'
+                }} />
+              </div>
+              
+              <div style={{ padding: '40px', display: 'flex', flexDirection: 'column' }}>
+                <h2 style={{ 
+                  fontFamily: '"Julius Sans One", sans-serif', 
+                  fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', 
+                  color: 'white', 
+                  marginBottom: '25px',
+                  lineHeight: 1.2,
+                  letterSpacing: '0.05em'
+                }}>
+                  {selectedEvent.title}
+                </h2>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '30px' }}>
+                  <span style={{ ...styles.datePill, fontSize: '0.8rem' }}>{formatDisplayDate(selectedEvent.date)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#999', fontSize: '0.9rem' }}>
+                    <span>🕒</span> {selectedEvent.time}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#999', fontSize: '0.9rem' }}>
+                    <span>📍</span> {selectedEvent.location}
+                  </div>
+                </div>
+
+                <div style={{ width: '40px', height: '2px', backgroundColor: '#CC0000', marginBottom: '25px' }} />
+
+                <p style={{ 
+                  color: '#CCCCCC', 
+                  fontSize: '1rem', 
+                  lineHeight: 1.8, 
+                  fontWeight: 300,
+                  marginBottom: '35px'
+                }}>
+                  {selectedEvent.description}
+                </p>
+
+                <button 
+                  onClick={() => setSelectedEvent(null)}
+                  style={{
+                    backgroundColor: '#CC0000',
+                    color: 'white',
+                    border: 'none',
+                    padding: '15px 30px',
+                    borderRadius: '4px',
+                    fontFamily: '"Quicksand", sans-serif',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                    marginTop: 'auto',
+                    transition: 'background 0.3s ease'
+                  }}
+                >
+                  CLOSE PREVIEW
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. FOOTER */}
       <SiteFooter />
     </div>
   );
@@ -174,60 +367,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '1200px',
     margin: '0 auto',
     padding: '0 20px'
-  },
-  navbar: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 1000,
-    backgroundColor: '#000000',
-    transition: 'all 0.3s ease',
-    padding: '15px 0'
-  },
-  navContainer: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  navBrand: {
-    fontFamily: '"Julius Sans One", sans-serif',
-    color: '#CC0000',
-    fontSize: '1.4rem',
-    textDecoration: 'none',
-    letterSpacing: '0.06em',
-    fontWeight: 400
-  },
-  navLinks: {
-    display: 'none', // Hidden on mobile, flex on desktop
-    gap: '30px'
-  },
-  hamburger: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: '5px'
-  },
-  hamburgerLine: {
-    width: '25px',
-    height: '2px',
-    transition: '0.3s ease'
-  },
-  mobileNav: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#000000',
-    flexDirection: 'column',
-    padding: '20px',
-    gap: '15px',
-    borderLeft: '4px solid #CC0000',
-    zIndex: 999
   },
   heroSection: {
     minHeight: '35vh',
@@ -352,21 +491,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#FFFFFF',
     fontWeight: 500
   },
-  ctaButton: {
-    backgroundColor: '#CC0000',
-    color: '#FFFFFF',
-    fontFamily: '"Quicksand", sans-serif',
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    padding: '16px 40px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    textDecoration: 'none',
-    textAlign: 'center',
-    marginTop: '10px',
-    transition: 'all 0.3s ease'
-  },
   gridSection: {
     padding: '60px 0',
     backgroundColor: '#000000'
@@ -431,87 +555,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#999999',
     fontWeight: 500,
     margin: 0
-  },
-  footer: {
-    backgroundColor: '#000000',
-    borderTop: '3px solid #CC0000',
-    padding: '50px 0 30px'
-  },
-  footerGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '40px',
-    marginBottom: '30px'
-  },
-  footerBrand: {
-    fontFamily: '"Julius Sans One", sans-serif',
-    color: '#CC0000',
-    fontSize: '1.2rem',
-    margin: '0 0 10px 0',
-    letterSpacing: '0.06em',
-    fontWeight: 400
-  },
-  footerTagline: {
-    fontSize: '0.85rem',
-    color: '#999999',
-    fontWeight: 300,
-    lineHeight: 1.6
-  },
-  footerTitle: {
-    fontSize: '1rem',
-    color: '#FFFFFF',
-    fontWeight: 600,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    marginBottom: '20px'
-  },
-  footerLinks: {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px'
-  },
-  footerContact: {
-    color: '#999999',
-    fontSize: '0.9rem',
-    lineHeight: 1.6
-  },
-  footerBottom: {
-    borderTop: '1px solid #1a1a1a',
-    paddingTop: '30px',
-    textAlign: 'center',
-    fontSize: '0.8rem',
-    color: '#666666'
   }
 };
 
 const customCSS = `
   @media (min-width: 768px) {
-    .nav-link-container { display: flex !important; }
-    #nav-links { display: flex !important; }
-    .details-block { grid-template-columns: 1fr 300px !important; }
-  }
-
-  .nav-link {
-    font-family: "Quicksand", sans-serif;
-    font-weight: 500;
-    color: #FFFFFF;
-    text-decoration: none;
-    font-size: 0.9rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    transition: color 0.3s ease;
-  }
-
-  .nav-link:hover, .nav-link.active {
-    color: #CC0000;
-  }
-
-  @media (min-width: 1024px) {
-    nav div div { display: flex !important; }
-    nav button { display: none !important; }
     .details-block { grid-template-columns: 1fr 400px !important; }
   }
 
@@ -560,28 +608,5 @@ const customCSS = `
   }
   .card-link:hover {
     color: #FF0000;
-  }
-
-  /* Footer Links */
-  .f-link {
-    color: #999999;
-    text-decoration: none;
-    transition: color 0.3s ease;
-  }
-  .f-link:hover {
-    color: #CC0000;
-  }
-
-  /* Utilities */
-  .details-block {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 30px;
-  }
-
-  @media (min-width: 768px) {
-    .details-block {
-      grid-template-columns: 1fr 350px;
-    }
   }
 `;

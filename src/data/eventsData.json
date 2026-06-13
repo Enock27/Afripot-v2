@@ -1,22 +1,22 @@
 [
   {
+    "id": "3",
+    "title": "TECH INNOVATION EXPO",
+    "date": "2026-06-14",
+    "time": "22:38",
+    "location": "Kigali",
+    "description": "Discover the latest in technology and innovation from across the continent.",
+    "image": "/src/assets/AfroMusic2.jpg"
+  },
+  {
     "id": "1",
     "title": "AFRIPOT GALA NIGHT 2026",
-    "date": "Saturday, August 16, 2026",
-    "time": "7:00 PM",
+    "date": "2026-06-20",
+    "time": "18:37",
     "location": "Address: 19 KN 51 St, Kigali",
     "description": "An exclusive evening celebrating excellence, community, and vision. Join us for an unforgettable night of music, food, and culture.",
     "image": "/src/assets/eventBannerUI/eventBanner1.jpg",
     "isFeatured": true
-  },
-  {
-    "id": "3",
-    "title": "TECH INNOVATION EXPO",
-    "date": "July 20, 2025",
-    "time": "10:00 AM - 6:00 PM",
-    "location": "Kigali",
-    "description": "Discover the latest in technology and innovation from across the continent.",
-    "image": "/src/assets/AfroMusic2.jpg"
   },
   {
     "id": "4",
