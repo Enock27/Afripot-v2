@@ -26,5 +26,15 @@
     "location": "Musanze",
     "description": "Honoring those who make a difference in our communities.",
     "image": "/src/assets/AfroMusic1.jpg"
+  },
+  {
+    "title": "INTORE MASSAMBA ",
+    "date": "sunday, August, 12",
+    "time": "18:00 PM",
+    "location": "KN 51 19",
+    "description": "Hey liberians come come",
+    "image": "/events/liberians.jpg",
+    "isFeatured": false,
+    "id": "1781378352902"
   }
 ]
