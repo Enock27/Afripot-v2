@@ -137,8 +137,8 @@ function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event, index) => (
             <div key={event.id} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden group hover:border-red-600 transition-all flex flex-col">
-              <div className="h-40 bg-zinc-800 relative">
-                <img src={event.image} alt={event.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="h-40 bg-black relative">
+                <img src={event.image} alt={event.title} className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
                 {index === 0 && (
                   <span className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">AUTO-FEATURED</span>
                 )}

@@ -187,11 +187,11 @@ function EventsPage() {
                   className="event-card reveal" 
                   style={{...styles.card, transitionDelay: `${index * 0.1}s`}}
                 >
-                  <div style={styles.cardImageArea}>
+                  <div style={{...styles.cardImageArea, backgroundColor: '#000000'}}>
                     <img 
                       src={event.image} 
                       alt={event.title} 
-                      style={styles.cardImage}
+                      style={{...styles.cardImage, objectFit: 'contain'}}
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                         (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
