@@ -21,17 +21,30 @@ export const getEvents = createServerFn({ method: "GET" }).handler(async () => {
 
 /**
  * UPDATE EVENTS
- * Removed .validator() to fix the runtime TypeError.
- * Data is passed directly to the handler as { data: Event[] }.
+ * Sanitizes data to prevent "Converting circular structure to JSON" errors.
  */
 export const updateEvents = createServerFn({ method: "POST" })
-  .handler(async ({ data: events }: { data: Event[] }) => {
+  .handler(async (events: Event[]) => {
     try {
+      // Create a clean array containing only the necessary serializable fields
+      const sanitizedEvents = events.map((ev) => ({
+        id: ev.id,
+        title: ev.title,
+        date: ev.date,
+        time: ev.time,
+        location: ev.location,
+        description: ev.description,
+        image: ev.image,
+        isFeatured: ev.isFeatured,
+      }));
+
       await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-      await fs.writeFile(DATA_FILE, JSON.stringify(events, null, 2), "utf-8");
+      await fs.writeFile(DATA_FILE, JSON.stringify(sanitizedEvents, null, 2), "utf-8");
+      
+      console.log("Write successful!");
       return { success: true };
     } catch (error) {
-      console.error("Error writing events data to JSON:", error);
-      throw new Error("Failed to save changes to the database.");
+      console.error("Detailed Error writing events data:", error);
+      throw new Error(`Failed to save changes: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });

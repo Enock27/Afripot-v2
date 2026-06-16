@@ -62,15 +62,20 @@ function AdminPage() {
     try {
       // Sort events chronologically: nearest event first
       const sorted = [...updatedEvents].sort((a, b) => {
-        const dateA = new Date(`${a.date}T${a.time}`);
-        const dateB = new Date(`${b.date}T${b.time}`);
-        return dateA.getTime() - dateB.getTime();
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        
+        if (isNaN(dateA)) return 1;
+        if (isNaN(dateB)) return -1;
+        
+        return dateA - dateB;
       });
       
-      await updateEvents({ data: sorted });
+      // Pass events directly
+      await updateEvents(sorted);
       setEvents(sorted);
     } catch (error) {
-      alert("⚠️ DATA SYNC ERROR: Changes were not saved to the server.");
+      alert(`⚠️ DATA SYNC ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
