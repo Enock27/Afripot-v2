@@ -24,9 +24,9 @@ export const getEvents = createServerFn({ method: "GET" }).handler(async () => {
  * Sanitizes data to prevent "Converting circular structure to JSON" errors.
  */
 export const updateEvents = createServerFn({ method: "POST" })
-  .handler(async (ctx: { data: Event[] }) => {
+  .handler(async (ctx) => {
     try {
-      const events = ctx.data;
+      const { data: events } = ctx as unknown as { data: Event[] };
       // Create a clean array containing only the necessary serializable fields
       const sanitizedEvents = events.map((ev) => ({
         id: ev.id,

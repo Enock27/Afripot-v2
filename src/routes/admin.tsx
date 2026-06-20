@@ -66,7 +66,7 @@ function AdminPage() {
   // VERIFIED SHA-256 hash of "karuta#@ABC123"
   const ADMIN_PASSWORD_HASH = "7fc889c4d4bdaa1ef90ad8aa56a5954452c190a0b65cdd0637bc097da9f9cd96";
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsAuthenticating(true);
     
@@ -98,7 +98,7 @@ function AdminPage() {
         if (isNaN(dateB)) return -1;
         return dateA - dateB;
       });
-      await updateEvents({ data: sorted });
+      await (updateEvents as any)({ data: sorted });
       setEvents(sorted);
     } catch (error) {
       alert(`⚠️ DATA SYNC ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -114,7 +114,7 @@ function AdminPage() {
     }
   };
 
-  const handleSaveEvent = async (e: React.FormEvent) => {
+  const handleSaveEvent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingEvent) return;
 
@@ -135,7 +135,7 @@ function AdminPage() {
   const handleSaveGalleryToDatabase = async (updatedGallery: GalleryItem[]) => {
     setIsSaving(true);
     try {
-      await updateGallery({ data: updatedGallery });
+      await (updateGallery as any)({ data: updatedGallery });
       setGalleryItems(updatedGallery);
     } catch (error) {
       alert(`⚠️ DATA SYNC ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -151,7 +151,7 @@ function AdminPage() {
     }
   };
 
-  const handleSaveGallery = async (e: React.FormEvent) => {
+  const handleSaveGallery = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingGallery) return;
 
@@ -160,7 +160,7 @@ function AdminPage() {
 
     try {
       if (selectedImageFile) {
-        const result = await uploadImage({ data: { fileName: selectedImageFile.name, base64Data: selectedImageFile.data } });
+        const result = await (uploadImage as any)({ data: { fileName: selectedImageFile.name, base64Data: selectedImageFile.data } });
         finalImageUrl = result.url;
       }
 

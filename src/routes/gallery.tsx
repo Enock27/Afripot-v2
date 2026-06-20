@@ -7,7 +7,7 @@ import { getGallery } from "@/lib/gallery.server";
 import { GalleryItem } from "@/data/galleryData";
 
 export const Route = createFileRoute("/gallery")({
-  loader: () => getGallery(),
+  loader: async (): Promise<GalleryItem[]> => getGallery(),
   component: GalleryPage,
   head: () => ({
     meta: [

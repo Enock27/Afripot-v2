@@ -22,9 +22,9 @@ export const getGallery = createServerFn({ method: "GET" }).handler(async () => 
  * UPDATE GALLERY ITEMS
  */
 export const updateGallery = createServerFn({ method: "POST" })
-  .handler(async (ctx: { data: GalleryItem[] }) => {
+  .handler(async (ctx) => {
     try {
-      const items = ctx.data;
+      const { data: items } = ctx as unknown as { data: GalleryItem[] };
       const sanitizedItems = items.map((item) => ({
         id: item.id,
         category: item.category,
@@ -48,9 +48,9 @@ export const updateGallery = createServerFn({ method: "POST" })
  * Decodes base64 string and saves it to public/uploads directory
  */
 export const uploadImage = createServerFn({ method: "POST" })
-  .handler(async (ctx: { data: { fileName: string, base64Data: string } }) => {
+  .handler(async (ctx) => {
     try {
-      const { fileName, base64Data } = ctx.data;
+      const { data: { fileName, base64Data } } = ctx as unknown as { data: { fileName: string; base64Data: string } };
       // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
       const base64 = base64Data.replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(base64, "base64");
