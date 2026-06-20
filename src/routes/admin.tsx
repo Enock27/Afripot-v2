@@ -14,6 +14,14 @@ export const Route = createFileRoute("/admin")({
     const [events, gallery] = await Promise.all([getEvents(), getGallery()]);
     return { events, gallery };
   },
+  head: () => ({
+    links: [
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=delete,edit",
+      }
+    ]
+  }),
   component: AdminPage,
 });
 
@@ -27,7 +35,12 @@ async function hashPassword(password: string) {
 
 function AdminPage() {
   const initialData = Route.useLoaderData();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("adminAuth") === "true";
+    }
+    return false;
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   
@@ -61,6 +74,7 @@ function AdminPage() {
       const enteredHash = await hashPassword(password.trim());
       if (enteredHash === ADMIN_PASSWORD_HASH) {
         setIsAuthenticated(true);
+        sessionStorage.setItem("adminAuth", "true");
       } else {
         alert("Invalid credentials. Please try again.");
         setPassword("");
@@ -219,6 +233,15 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans">
+      <style>{`
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+      `}</style>
       <SiteHeader />
       
       <main className="max-w-6xl mx-auto px-6 py-20">
@@ -297,11 +320,11 @@ function AdminPage() {
                       <button onClick={() => {
                         setEditEvent(event);
                         setFormStep(1);
-                      }} className="text-zinc-400 hover:text-white p-2 text-sm" title="Edit">
-                        ✏️
+                      }} className="text-zinc-400 hover:text-white p-2 text-sm flex items-center justify-center" title="Edit">
+                        <span className="material-symbols-outlined text-base">edit</span>
                       </button>
-                      <button onClick={() => handleDeleteEvent(event.id)} className="text-zinc-400 hover:text-red-600 p-2 text-sm" title="Delete">
-                        🗑️
+                      <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:text-red-600 p-2 text-sm flex items-center justify-center" title="Delete">
+                        <span className="material-symbols-outlined text-base">delete</span>
                       </button>
                     </div>
                   </div>
@@ -331,11 +354,11 @@ function AdminPage() {
                 <div className="p-4 flex justify-between items-center">
                   <h3 className="font-serif text-lg">{item.title}</h3>
                   <div className="flex gap-2">
-                    <button onClick={() => setEditGallery(item)} className="text-zinc-400 hover:text-white p-2 text-sm" title="Edit">
-                      ✏️
+                    <button onClick={() => setEditGallery(item)} className="text-zinc-400 hover:text-white p-2 text-sm flex items-center justify-center" title="Edit">
+                      <span className="material-symbols-outlined text-base">edit</span>
                     </button>
-                    <button onClick={() => handleDeleteGallery(item.id)} className="text-zinc-400 hover:text-red-600 p-2 text-sm" title="Delete">
-                      🗑️
+                    <button onClick={() => handleDeleteGallery(item.id)} className="text-red-500 hover:text-red-600 p-2 text-sm flex items-center justify-center" title="Delete">
+                      <span className="material-symbols-outlined text-base">delete</span>
                     </button>
                   </div>
                 </div>
