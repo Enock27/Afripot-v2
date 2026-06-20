@@ -44,6 +44,7 @@ function AdminPage() {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(initialData.gallery);
   const [editingGallery, setEditGallery] = useState<Partial<GalleryItem> | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<{name: string, data: string} | null>(null);
+  const [viewingGallery, setViewingGallery] = useState<GalleryItem | null>(null);
   
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -320,8 +321,11 @@ function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {galleryItems.map((item) => (
               <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden group hover:border-red-600 transition-all flex flex-col">
-                <div className="h-48 bg-black relative">
-                  <img src={item.image} alt={item.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div 
+                  className="h-48 bg-black relative cursor-pointer"
+                  onClick={() => setViewingGallery(item)}
+                >
+                  <img src={item.image} alt={item.title} className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
                   <span className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase tracking-wider">{item.category}</span>
                 </div>
                 <div className="p-4 flex justify-between items-center">
@@ -342,6 +346,40 @@ function AdminPage() {
                 <p className="text-zinc-500 uppercase tracking-widest text-sm">No images in gallery. Click "Add New Image" to begin.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* View Modal (Gallery) */}
+        {viewingGallery && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[150] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <div className="bg-zinc-900 border border-zinc-800 w-full max-w-4xl rounded-2xl relative overflow-hidden my-auto shadow-2xl flex flex-col">
+              <button 
+                onClick={() => setViewingGallery(null)}
+                className="absolute top-6 right-6 text-white/50 hover:text-white z-20 bg-black/20 backdrop-blur-md p-2 rounded-full transition-all"
+              >
+                ✕
+              </button>
+              
+              <div className="h-[50vh] min-h-[300px] bg-black relative">
+                <img src={viewingGallery.image} alt={viewingGallery.title} className="w-full h-full object-contain" />
+              </div>
+              
+              <div className="p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                <div>
+                  <span className="text-red-600 font-bold uppercase tracking-widest text-[10px] mb-2 block">{viewingGallery.category}</span>
+                  <h2 className="font-serif text-3xl text-white uppercase tracking-wider">{viewingGallery.title}</h2>
+                </div>
+                <button 
+                  onClick={() => {
+                    setEditGallery(viewingGallery);
+                    setViewingGallery(null);
+                  }}
+                  className="bg-white text-black hover:bg-red-600 hover:text-white px-8 py-4 rounded-xl font-black text-[10px] tracking-[0.3em] uppercase transition-all shadow-lg whitespace-nowrap"
+                >
+                  Edit Image
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
