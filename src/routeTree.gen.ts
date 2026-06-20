@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ReservationRouteImport } from './routes/reservation'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -26,6 +27,11 @@ const ReservationRoute = ReservationRouteImport.update({
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/demo': typeof DemoRoute
   '/events': typeof EventsRoute
+  '/gallery': typeof GalleryRoute
   '/menu': typeof MenuRoute
   '/reservation': typeof ReservationRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/demo': typeof DemoRoute
   '/events': typeof EventsRoute
+  '/gallery': typeof GalleryRoute
   '/menu': typeof MenuRoute
   '/reservation': typeof ReservationRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/demo': typeof DemoRoute
   '/events': typeof EventsRoute
+  '/gallery': typeof GalleryRoute
   '/menu': typeof MenuRoute
   '/reservation': typeof ReservationRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/demo'
     | '/events'
+    | '/gallery'
     | '/menu'
     | '/reservation'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/demo'
     | '/events'
+    | '/gallery'
     | '/menu'
     | '/reservation'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/demo'
     | '/events'
+    | '/gallery'
     | '/menu'
     | '/reservation'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DemoRoute: typeof DemoRoute
   EventsRoute: typeof EventsRoute
+  GalleryRoute: typeof GalleryRoute
   MenuRoute: typeof MenuRoute
   ReservationRoute: typeof ReservationRoute
 }
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DemoRoute: DemoRoute,
   EventsRoute: EventsRoute,
+  GalleryRoute: GalleryRoute,
   MenuRoute: MenuRoute,
   ReservationRoute: ReservationRoute,
 }

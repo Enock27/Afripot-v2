@@ -82,6 +82,7 @@ export function SiteHeader() {
             <Link to="/" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">Home</Link>
             <Link to="/menu" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">Menu</Link>
             <Link to="/events" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">Events</Link>
+            <Link to="/gallery" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">Gallery</Link>
             <Link to="/about" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">About</Link>
             <Link to="/contact" onClick={() => setOpen(false)} className="hover:text-gold transition-colors py-2 w-full">Contact</Link>
           </nav>

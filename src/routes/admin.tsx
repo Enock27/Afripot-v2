@@ -11,14 +11,14 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
+import { sha256 } from "js-sha256";
+
 /**
  * UTILITY: Hash a string using SHA-256
  */
 async function hashPassword(password: string) {
-  const msgUint8 = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Use js-sha256 for consistent hashing across environments (even non-HTTPS)
+  return sha256(password);
 }
 
 function AdminPage() {
@@ -42,7 +42,7 @@ function AdminPage() {
     setIsAuthenticating(true);
     
     try {
-      const enteredHash = await hashPassword(password);
+      const enteredHash = await hashPassword(password.trim());
       if (enteredHash === ADMIN_PASSWORD_HASH) {
         setIsAuthenticated(true);
       } else {
