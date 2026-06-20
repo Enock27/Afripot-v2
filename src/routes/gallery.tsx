@@ -3,8 +3,11 @@ import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { motion, AnimatePresence } from "framer-motion";
+import { getGallery } from "@/lib/gallery.server";
+import { GalleryItem } from "@/data/galleryData";
 
 export const Route = createFileRoute("/gallery")({
+  loader: () => getGallery(),
   component: GalleryPage,
   head: () => ({
     meta: [
@@ -22,21 +25,12 @@ export const Route = createFileRoute("/gallery")({
   }),
 });
 
-// Mock data
-const galleryItems = [
-  { id: 1, category: "Breakfast", title: "Morning Delight", image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&q=80" },
-  { id: 2, category: "Lunch", title: "Hearty Stew", image: "https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80" },
-  { id: 3, category: "Food", title: "Jollof Rice", image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&q=80" },
-  { id: 4, category: "Lunch", title: "Spicy Chicken", image: "https://images.unsplash.com/photo-1598514982205-f36b96d1e8dd?w=800&q=80" },
-  { id: 5, category: "Food", title: "Plantain & Beans", image: "https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?w=800&q=80" },
-  { id: 6, category: "Breakfast", title: "Akara & Pap", image: "https://images.unsplash.com/photo-1662555307525-4720979a0cf5?w=800&q=80" },
-];
-
 const categories = ["All", "Food", "Breakfast", "Lunch"];
 
 function GalleryPage() {
+  const galleryItems = Route.useLoaderData();
   const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedImage, setSelectedImage] = useState<typeof galleryItems[0] | null>(null);
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
 
   const filteredItems = galleryItems.filter(
     (item) => activeCategory === "All" || item.category === activeCategory
