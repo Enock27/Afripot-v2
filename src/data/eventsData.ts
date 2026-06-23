@@ -24,7 +24,7 @@ export const upcomingEvents: Event[] = [
     id: "2",
     title: "LEADERSHIP SUMMIT",
     date: "July 5, 2025",
-    time: "9:00 AM - 4:00 PM",
+    time: "7:00 AM - 4:00 PM",
     location: "Kigali",
     description: "Empowering the next generation of leaders with insights from industry experts.",
     image: "/src/assets/AfroMusic1.jpg",

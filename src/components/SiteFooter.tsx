@@ -24,7 +24,7 @@ export function SiteFooter() {
             <h4 className="text-xs sm:text-sm md:text-base tracking-[0.25em] uppercase text-gold mb-3 sm:mb-4">Hours</h4>
             <p className="text-xs sm:text-sm md:text-base text-muted-foreground leading-relaxed">
               Mon – Sun<br />
-              9:00 AM – 12:00 AM
+              7:00 AM – 12:00 AM
             </p>
           </div>
 

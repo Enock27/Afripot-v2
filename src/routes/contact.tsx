@@ -57,7 +57,7 @@ function ContactPage() {
                   <div>
                     <h3 className="text-xs sm:text-sm tracking-[0.3em] uppercase text-gold mb-2 sm:mb-3">Hours</h3>
                     <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                      Mon – Sun<br />9:00 AM – 12:00 AM
+                      Mon – Sun<br />7:00 AM – 12:00 AM
                     </p>
                   </div>
                 </div>
