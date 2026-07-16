@@ -42,8 +42,8 @@ function AboutPage() {
 
       <section className="px-4 sm:px-6 md:px-12 pb-32">
         <div className="mx-auto max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <img src={interior} alt="Wine staircase" loading="lazy" className="w-full aspect-[4/5] object-cover shadow-elegant" />
-          <img src={diningRoom} alt="Dining room" loading="lazy" className="w-full aspect-[4/5] object-cover shadow-elegant" />
+          <img src={interior} alt="Wine staircase" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
+          <img src={diningRoom} alt="Dining room" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
         </div>
       </section>
 
