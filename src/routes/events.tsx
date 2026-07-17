@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { getEvents } from "@/lib/events.server";
+import { usePublicEvents } from "@/hooks/useAdminData";
 import { Event } from "@/data/eventsData";
 
 export const Route = createFileRoute("/events")({
-  loader: () => getEvents(),
   component: EventsPage,
   head: () => ({
     meta: [
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/events")({
 });
 
 function EventsPage() {
-  const upcomingEventsData = Route.useLoaderData();
+  const upcomingEventsData = usePublicEvents();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   // Auto-sort events: nearest first

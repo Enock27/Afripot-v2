@@ -3,11 +3,10 @@ import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { motion, AnimatePresence } from "framer-motion";
-import { getGallery } from "@/lib/gallery.server";
+import { usePublicGallery } from "@/hooks/useAdminData";
 import { GalleryItem } from "@/data/galleryData";
 
 export const Route = createFileRoute("/gallery")({
-  loader: async (): Promise<GalleryItem[]> => getGallery(),
   component: GalleryPage,
   head: () => ({
     meta: [
@@ -28,7 +27,7 @@ export const Route = createFileRoute("/gallery")({
 const categories = ["All", "Food", "Breakfast", "Lunch"];
 
 function GalleryPage() {
-  const galleryItems = Route.useLoaderData();
+  const galleryItems = usePublicGallery();
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
 
