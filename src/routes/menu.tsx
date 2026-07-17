@@ -4,8 +4,8 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Marquee } from "@/components/Marquee";
 import { MenuCarousel } from "@/components/MenuCarousel";
 import { useState, useEffect } from "react";
-import * as menuData from "@/data/menuData";
 import * as beveragesData from "@/data/beveragesData";
+import { usePublicMenu } from "@/hooks/useAdminData";
 
 // Food images for the hero gallery
 import fd3 from "@/assets/fd3.jpg";
@@ -26,48 +26,6 @@ export const Route = createFileRoute("/menu")({
     ],
   }),
 });
-
-// ─── Data ────────────────────────────────────────────────────────────────────
-
-// Import menu items from data files
-const breakfastItems = menuData.breakfastItems;
-const soupsItems = menuData.soupsItems;
-const saladItems = menuData.saladItems;
-const mainCourseItems = menuData.mainCourseItems;
-const wrapsItems = menuData.wrapsItems;
-const sandwichItems = menuData.sandwichItems;
-const burgerItems = menuData.burgerItems;
-const pizzaItems = menuData.pizzaItems;
-const pastaItems = menuData.pastaItems;
-const grillsItems = menuData.grillsItems;
-const extrasItems = menuData.extrasItems;
-const asianItems = menuData.asianItems;
-const sizzlingItems = menuData.sizzlingItems;
-const noodlesItems = menuData.noodlesItems;
-const snacksItems = menuData.snacksItems;
-const kidsMenuItems = menuData.kidsMenuItems;
-const localFoodItems = menuData.localFoodItems;
-
-// Beverages
-const coffeeItems = beveragesData.coffeeItems;
-const flavoredCoffeeItems = beveragesData.flavoredCoffeeItems;
-const specialCoffeeItems = beveragesData.specialCoffeeItems;
-const icedCoffeeItems = beveragesData.icedCoffeeItems;
-const milkShakesItems = beveragesData.milkShakesItems;
-const freshJuicesItems = beveragesData.freshJuicesItems;
-const mojitoItems = beveragesData.mojitoItems;
-const fruitTeaItems = beveragesData.fruitTeaItems;
-const smoothiesItems = beveragesData.smoothiesItems;
-const teaItems = beveragesData.teaItems;
-const winesByBottleItems = beveragesData.winesByBottleItems;
-const sparklingWineItems = beveragesData.sparklingWineItems;
-const champagneItems = beveragesData.champagneItems;
-const whiskyItems = beveragesData.whiskyItems;
-const beersItems = beveragesData.beersItems;
-const tequilaItems = beveragesData.tequilaItems;
-const ginItems = beveragesData.ginItems;
-const cognacItems = beveragesData.cognacItems;
-const cocktailsItems = beveragesData.cocktailsItems;
 
 const marqueeItems = [
   "AfriPot Restaurant",
@@ -244,47 +202,35 @@ function HeroCarousel() {
 }
 
 function MenuPage() {
-  // Organize all menu sections for carousel
-  const foodSections = [
-    { title: "BREAKFAST", items: breakfastItems },
-    { title: "SOUPS & STARTERS", items: soupsItems },
-    { title: "SALAD BAR", items: saladItems },
-    { title: "MAIN COURSES", items: mainCourseItems },
-    { title: "WRAPS", items: wrapsItems },
-    { title: "SANDWICHES", items: sandwichItems },
-    { title: "BURGERS", items: burgerItems },
-    { title: "PIZZA", items: pizzaItems },
-    { title: "PASTA", items: pastaItems },
-    { title: "GRILLS & BBQ", items: grillsItems },
-    { title: "EXTRAS", items: extrasItems },
-    { title: "ASIAN DISHES", items: asianItems },
-    { title: "SIZZLING", items: sizzlingItems },
-    { title: "NOODLES & RICE", items: noodlesItems },
-    { title: "SNACKS", items: snacksItems },
-    { title: "KIDS MENU", items: kidsMenuItems },
-    { title: "LOCAL FOOD MENU", items: localFoodItems },
-  ];
+  // Food sections come from localStorage (admin-editable) via usePublicMenu
+  const menuSections = usePublicMenu();
 
+  // Derive foodSections from hook data — preserves admin edits live
+  const foodSections = menuSections
+    .filter(s => s.category === "food")
+    .map(s => ({ title: s.title, items: s.items }));
+
+  // Beverages remain static (not yet admin-editable)
   const beverageSections = [
-    { title: "COFFEE", items: coffeeItems },
-    { title: "FLAVORED COFFEE", items: flavoredCoffeeItems },
-    { title: "SPECIAL COFFEES", items: specialCoffeeItems },
-    { title: "ICED COFFEE", items: icedCoffeeItems },
-    { title: "MILK SHAKES", items: milkShakesItems },
-    { title: "FRESH JUICES", items: freshJuicesItems },
-    { title: "MOJITOS", items: mojitoItems },
-    { title: "FRUIT TEA", items: fruitTeaItems },
-    { title: "SMOOTHIES", items: smoothiesItems },
-    { title: "TEA", items: teaItems },
-    { title: "WINES BY BOTTLE", items: winesByBottleItems },
-    { title: "SPARKLING WINE", items: sparklingWineItems },
-    { title: "CHAMPAGNE", items: champagneItems },
-    { title: "WHISKY", items: whiskyItems },
-    { title: "BEERS", items: beersItems },
-    { title: "TEQUILA", items: tequilaItems },
-    { title: "GIN", items: ginItems },
-    { title: "COGNAC", items: cognacItems },
-    { title: "COCKTAILS", items: cocktailsItems },
+    { title: "COFFEE",           items: beveragesData.coffeeItems },
+    { title: "FLAVORED COFFEE",  items: beveragesData.flavoredCoffeeItems },
+    { title: "SPECIAL COFFEES",  items: beveragesData.specialCoffeeItems },
+    { title: "ICED COFFEE",      items: beveragesData.icedCoffeeItems },
+    { title: "MILK SHAKES",      items: beveragesData.milkShakesItems },
+    { title: "FRESH JUICES",     items: beveragesData.freshJuicesItems },
+    { title: "MOJITOS",          items: beveragesData.mojitoItems },
+    { title: "FRUIT TEA",        items: beveragesData.fruitTeaItems },
+    { title: "SMOOTHIES",        items: beveragesData.smoothiesItems },
+    { title: "TEA",              items: beveragesData.teaItems },
+    { title: "WINES BY BOTTLE",  items: beveragesData.winesByBottleItems },
+    { title: "SPARKLING WINE",   items: beveragesData.sparklingWineItems },
+    { title: "CHAMPAGNE",        items: beveragesData.champagneItems },
+    { title: "WHISKY",           items: beveragesData.whiskyItems },
+    { title: "BEERS",            items: beveragesData.beersItems },
+    { title: "TEQUILA",          items: beveragesData.tequilaItems },
+    { title: "GIN",              items: beveragesData.ginItems },
+    { title: "COGNAC",           items: beveragesData.cognacItems },
+    { title: "COCKTAILS",        items: beveragesData.cocktailsItems },
   ];
 
   return (

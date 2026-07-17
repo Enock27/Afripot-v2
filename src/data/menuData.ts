@@ -186,3 +186,41 @@ export const localFoodItems = [
   { name: "Beef Gnut Box", ingredients: "Beef with groundnut sauce", price: "9,000" },
   { name: "Fish Dry", ingredients: "Dried fish preparation", price: "10,000" },
 ];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MenuItem {
+  name: string;
+  ingredients: string;
+  price: string;
+}
+
+export interface MenuSection {
+  id: string;          // stable key, e.g. "breakfast"
+  title: string;       // display label
+  category: "food" | "beverages";
+  items: MenuItem[];
+}
+
+/** Returns the full default menu as MenuSection[]. Called once on first load. */
+export function defaultMenuSections(): MenuSection[] {
+  return [
+    { id: "breakfast",    title: "BREAKFAST",          category: "food",       items: breakfastItems.map(i => ({ ...i })) },
+    { id: "soups",        title: "SOUPS & STARTERS",   category: "food",       items: soupsItems.map(i => ({ ...i })) },
+    { id: "salads",       title: "SALAD BAR",          category: "food",       items: saladItems.map(i => ({ ...i })) },
+    { id: "mains",        title: "MAIN COURSES",       category: "food",       items: mainCourseItems.map(i => ({ ...i })) },
+    { id: "wraps",        title: "WRAPS",              category: "food",       items: wrapsItems.map(i => ({ ...i })) },
+    { id: "sandwiches",   title: "SANDWICHES",         category: "food",       items: sandwichItems.map(i => ({ ...i })) },
+    { id: "burgers",      title: "BURGERS",            category: "food",       items: burgerItems.map(i => ({ ...i })) },
+    { id: "pizza",        title: "PIZZA",              category: "food",       items: pizzaItems.map(i => ({ ...i })) },
+    { id: "pasta",        title: "PASTA",              category: "food",       items: pastaItems.map(i => ({ ...i })) },
+    { id: "grills",       title: "GRILLS & BBQ",       category: "food",       items: grillsItems.map(i => ({ ...i })) },
+    { id: "extras",       title: "EXTRAS",             category: "food",       items: extrasItems.map(i => ({ ...i })) },
+    { id: "asian",        title: "ASIAN DISHES",       category: "food",       items: asianItems.map(i => ({ ...i })) },
+    { id: "sizzling",     title: "SIZZLING",           category: "food",       items: sizzlingItems.map(i => ({ ...i })) },
+    { id: "noodles",      title: "NOODLES & RICE",     category: "food",       items: noodlesItems.map(i => ({ ...i })) },
+    { id: "snacks",       title: "SNACKS",             category: "food",       items: snacksItems.map(i => ({ ...i })) },
+    { id: "kids",         title: "KIDS MENU",          category: "food",       items: kidsMenuItems.map(i => ({ ...i })) },
+    { id: "localfood",    title: "LOCAL FOOD MENU",    category: "food",       items: localFoodItems.map(i => ({ ...i })) },
+  ];
+}

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/gallery")({
   }),
 });
 
-const categories = ["All", "Food", "Breakfast", "Lunch"];
+const categories = ["All", "Food", "Drinks", "Atmosphere"];
 
 function GalleryPage() {
   const galleryItems = usePublicGallery();
