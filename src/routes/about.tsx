@@ -21,7 +21,7 @@ function AboutPage() {
 
       <section className="pt-40 pb-20 px-6 md:px-12 text-center">
         <p className="text-xs tracking-[0.4em] uppercase text-gold mb-6">Our Story</p>
-        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-8xl">
+        <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl">
           About <em className="font-swanky text-gradient-gold">AfriPot</em>
         </h1>
       </section>

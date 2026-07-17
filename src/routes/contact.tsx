@@ -21,7 +21,7 @@ function ContactPage() {
       {/* Hero */}
       <section className="pt-40 pb-16 px-6 md:px-12 text-center">
         <p className="text-xs tracking-[0.4em] uppercase text-gold mb-6">Reserve · Contact</p>
-        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-8xl">
+        <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl">
           Be our <em className="text-gradient-gold">guest</em>
         </h1>
       </section>

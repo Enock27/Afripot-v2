@@ -246,9 +246,9 @@ function MenuPage() {
 
         {/* Heading */}
         <h1 className="font-serif font-light leading-none mb-10 whitespace-nowrap">
-          <span className="text-white text-[clamp(3.5rem,10vw,7.5rem)]">Our&nbsp;</span>
+          <span className="text-white text-[clamp(2rem,6vw,4.5rem)]">Our&nbsp;</span>
           <span
-            className="font-serif font-light text-[clamp(3.5rem,10vw,7.5rem)]"
+            className="font-serif font-light text-[clamp(2rem,6vw,4.5rem)]"
             style={{
               color: "transparent",
               WebkitTextStroke: "1px rgba(181,140,103,0.6)",
