@@ -10,6 +10,26 @@ const GALLERY_KEY = "afripot_gallery";
 const EVENTS_KEY  = "afripot_events";
 const MENU_KEY    = "afripot_menu";
 
+// ─── in-process pub/sub ───────────────────────────────────────────────────────
+// StorageEvent only fires in *other* tabs. For same-tab (SPA) reactivity we
+// maintain a tiny typed event bus so every subscriber updates the moment a save
+// is committed — no polling, no delay.
+
+type DataKey = typeof GALLERY_KEY | typeof EVENTS_KEY | typeof MENU_KEY;
+type Listener = () => void;
+
+const listeners = new Map<DataKey, Set<Listener>>();
+
+function subscribe(key: DataKey, fn: Listener): () => void {
+  if (!listeners.has(key)) listeners.set(key, new Set());
+  listeners.get(key)!.add(fn);
+  return () => listeners.get(key)!.delete(fn);
+}
+
+function notify(key: DataKey) {
+  listeners.get(key)?.forEach(fn => fn());
+}
+
 // ─── loaders ─────────────────────────────────────────────────────────────────
 
 function loadGallery(): GalleryItem[] {
@@ -36,13 +56,14 @@ function loadMenu(): MenuSection[] {
   return defaultMenuSections();
 }
 
-// ─── safe saver — returns error string or null ────────────────────────────────
+// ─── safe saver ───────────────────────────────────────────────────────────────
 
-function trySave(key: string, value: unknown): string | null {
+function trySave(key: DataKey, value: unknown): string | null {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-    // Dispatch a storage event so same-tab listeners (public pages) also react.
-    // Native storage events only fire in *other* tabs, so we dispatch manually here.
+    // 1. Notify same-tab subscribers immediately via the in-process bus
+    notify(key);
+    // 2. Dispatch StorageEvent so *other* tabs also update
     window.dispatchEvent(new StorageEvent("storage", { key, storageArea: localStorage }));
     return null;
   } catch (e) {
@@ -56,10 +77,10 @@ function trySave(key: string, value: unknown): string | null {
 // ─── admin hook (full CRUD) ───────────────────────────────────────────────────
 
 export function useAdminData() {
-  const [gallery,  setGallery]  = useState<GalleryItem[]>([]);
-  const [events,   setEvents]   = useState<Event[]>([]);
-  const [menu,     setMenu]     = useState<MenuSection[]>([]);
-  const [ready,    setReady]    = useState(false);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [events,  setEvents]  = useState<Event[]>([]);
+  const [menu,    setMenu]    = useState<MenuSection[]>([]);
+  const [ready,   setReady]   = useState(false);
 
   useEffect(() => {
     setGallery(loadGallery());
@@ -68,7 +89,6 @@ export function useAdminData() {
     setReady(true);
   }, []);
 
-  /** Returns an error string on failure, null on success */
   const saveGallery = useCallback((items: GalleryItem[]): string | null => {
     const err = trySave(GALLERY_KEY, items);
     if (!err) setGallery(items);
@@ -93,34 +113,64 @@ export function useAdminData() {
 // ─── public hooks (read-only, for public pages) ───────────────────────────────
 
 export function usePublicGallery(): GalleryItem[] {
-  // Initialize directly from localStorage (not static JSON) to avoid flash of stale data
   const [items, setItems] = useState<GalleryItem[]>(() => loadGallery());
 
   useEffect(() => {
-    // Refresh in case localStorage changed between SSR and hydration
+    // Sync on mount in case localStorage changed before this component rendered
     setItems(loadGallery());
 
-    // Listen for admin saves from any tab/window and update immediately
+    // Same-tab updates via the in-process bus (fires instantly on admin save)
+    const unsubscribe = subscribe(GALLERY_KEY, () => setItems(loadGallery()));
+
+    // Cross-tab updates via the native StorageEvent
     function onStorage(e: StorageEvent) {
-      if (e.key === GALLERY_KEY) {
-        setItems(loadGallery());
-      }
+      if (e.key === GALLERY_KEY) setItems(loadGallery());
     }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   return items;
 }
 
 export function usePublicEvents(): Event[] {
-  const [items, setItems] = useState<Event[]>(eventsJson as Event[]);
-  useEffect(() => { setItems(loadEvents()); }, []);
+  const [items, setItems] = useState<Event[]>(() => loadEvents());
+
+  useEffect(() => {
+    setItems(loadEvents());
+    const unsubscribe = subscribe(EVENTS_KEY, () => setItems(loadEvents()));
+    function onStorage(e: StorageEvent) {
+      if (e.key === EVENTS_KEY) setItems(loadEvents());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   return items;
 }
 
 export function usePublicMenu(): MenuSection[] {
-  const [sections, setSections] = useState<MenuSection[]>(() => defaultMenuSections());
-  useEffect(() => { setSections(loadMenu()); }, []);
+  const [sections, setSections] = useState<MenuSection[]>(() => loadMenu());
+
+  useEffect(() => {
+    setSections(loadMenu());
+    const unsubscribe = subscribe(MENU_KEY, () => setSections(loadMenu()));
+    function onStorage(e: StorageEvent) {
+      if (e.key === MENU_KEY) setSections(loadMenu());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   return sections;
 }
