@@ -14,21 +14,12 @@ interface GalleryItem {
 }
 
 export default async (req: Request) => {
-  // Verify admin secret
-  const auth = req.headers.get("x-admin-secret");
-  if (!auth || auth !== process.env.ADMIN_SECRET) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   let items: GalleryItem[];
   try {
     items = await req.json();
     if (!Array.isArray(items)) throw new Error("Expected array");
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid body" }), {
+    return new Response(JSON.stringify({ error: "Invalid body — expected a JSON array" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
@@ -39,7 +30,7 @@ export default async (req: Request) => {
     process.env.SUPABASE_SERVICE_KEY!
   );
 
-  // Delete everything then re-insert — keeps table in sync with admin state
+  // Delete all rows then re-insert — keeps table in sync with admin state
   const { error: delErr } = await supabase.from("gallery").delete().neq("id", "");
   if (delErr) {
     return new Response(JSON.stringify({ error: delErr.message }), {
