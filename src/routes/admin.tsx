@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useAdminData } from "@/hooks/useAdminData";
@@ -162,10 +162,26 @@ function ImageUrlTip() {
 // ─── gallery admin ────────────────────────────────────────────────────────────
 const emptyGalleryItem = (): GalleryItem => ({ id: uid(), title: "", category: "Food", image: "" });
 
+/** Read a File as a base-64 data URL */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Rough size check — warn if the data URL will be large in localStorage */
+const MAX_UPLOAD_BYTES = 1.5 * 1024 * 1024; // 1.5 MB per image
+
 function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: GalleryItem[]) => string | null }) {
-  const [form, setForm] = useState<GalleryItem>(emptyGalleryItem());
+  const [form, setForm]       = useState<GalleryItem>(emptyGalleryItem());
   const [editing, setEditing] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
+  const [inputMode, setInputMode] = useState<"url" | "upload">("upload");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toastMsg, toastError, showToast } = useToast();
 
   function handleUrlChange(url: string) {
@@ -175,65 +191,180 @@ function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: Gal
     if (error) showToast("❌ " + error, true);
   }
 
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("⚠️ Please select an image file (jpg, png, webp…)", true);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      showToast("⚠️ Image is larger than 1.5 MB. Please compress it first or use a URL instead.", true);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setForm(f => ({ ...f, image: dataUrl }));
+      setPreview(dataUrl);
+      // Pre-fill title from filename if blank
+      setForm(f => ({
+        ...f,
+        image: dataUrl,
+        title: f.title.trim() ? f.title : file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
+      }));
+    } catch {
+      showToast("❌ Failed to read file. Please try again.", true);
+    } finally {
+      setUploading(false);
+      // Reset so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [showToast]);
+
+  // Drag-and-drop onto the upload zone
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    // Reuse the same logic by synthesising a change event target
+    const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
+    await handleFileChange(fakeEvent);
+  }, [handleFileChange]);
+
   function saveItem() {
     if (!form.title.trim()) { showToast("⚠️ Title is required.", true); return; }
-    if (!form.image.trim()) { showToast("⚠️ Image URL is required.", true); return; }
-    const next = editing ? items.map(i => i.id === editing ? { ...form } : i) : [{ ...form, id: uid() }, ...items];
+    if (!form.image.trim()) { showToast("⚠️ Image is required.", true); return; }
+    const next = editing
+      ? items.map(i => i.id === editing ? { ...form } : i)
+      : [{ ...form, id: uid() }, ...items];
     const err = onSave(next);
     if (err) { showToast("❌ " + err, true); return; }
     showToast(editing ? "✅ Image updated!" : "✅ Image added to gallery!");
     setForm(emptyGalleryItem()); setEditing(null); setPreview("");
   }
 
-  function editItem(item: GalleryItem) { setForm({ ...item }); setEditing(item.id); setPreview(item.image); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function deleteItem(id: string) { if (confirm("Delete this image?")) { const err = onSave(items.filter(i => i.id !== id)); if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted."); } }
+  function editItem(item: GalleryItem) {
+    setForm({ ...item });
+    setEditing(item.id);
+    setPreview(item.image);
+    // If image is a data URL it was uploaded; show upload tab, otherwise URL tab
+    setInputMode(item.image.startsWith("data:") ? "upload" : "url");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function deleteItem(id: string) {
+    if (confirm("Delete this image?")) {
+      const err = onSave(items.filter(i => i.id !== id));
+      if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted.");
+    }
+  }
   function cancel() { setForm(emptyGalleryItem()); setEditing(null); setPreview(""); }
 
   return (
     <div>
       <Toast msg={toastMsg} isError={toastError} />
       <h2 style={S.sectionTitle}>Gallery <span style={{ color:"#555", fontSize:16 }}>({items.length} images)</span></h2>
+
       <div style={S.card}>
         <h3 style={S.cardTitle}>{editing ? "✏️ Edit Image" : "➕ Add New Image"}</h3>
+
+        {/* Title + Category */}
         <div style={S.grid2}>
-          <Field label="Title"><input style={S.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Jollof Rice" /></Field>
+          <Field label="Title">
+            <input style={S.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Jollof Rice" />
+          </Field>
           <Field label="Category">
             <select style={S.input} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
               {GALLERY_CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </Field>
         </div>
-        <Field label="Image URL">
-          <ImageUrlTip />
-          <input style={S.input} value={form.image} onChange={e => handleUrlChange(e.target.value)} placeholder="https://i.imgur.com/xxxxxx.jpg" />
-        </Field>
-        {preview && (
-          <div style={{ marginTop:12 }}>
-            <p style={{ color:"#666", fontSize:11, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Preview</p>
-            <img src={preview} alt="preview" onError={() => showToast("⚠️ Image URL did not load. Check the link.", true)}
-              style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%" }} />
-          </div>
+
+        {/* Mode toggle */}
+        <div style={{ display:"flex", gap:0, marginBottom:12, borderRadius:8, overflow:"hidden", border:"1px solid #2a2a2a", width:"fit-content" }}>
+          {(["upload","url"] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => { setInputMode(mode); setPreview(""); setForm(f => ({ ...f, image: "" })); }}
+              style={{ padding:"8px 20px", border:"none", cursor:"pointer", fontSize:12, fontWeight:600, letterSpacing:0.5, textTransform:"uppercase", background: inputMode === mode ? "#cc0000" : "#1a1a1a", color: inputMode === mode ? "#fff" : "#666", transition:"background 0.2s" }}
+            >
+              {mode === "upload" ? "📁 Upload File" : "🔗 Paste URL"}
+            </button>
+          ))}
+        </div>
+
+        {/* Upload mode */}
+        {inputMode === "upload" && (
+          <Field label="Image File (jpg, png, webp — max 1.5 MB)">
+            <div
+              onDrop={handleDrop}
+              onDragOver={e => e.preventDefault()}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ border:"2px dashed #2a2a2a", borderRadius:10, padding:"32px 20px", textAlign:"center", cursor:"pointer", background:"#141414", transition:"border-color 0.2s", position:"relative" }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "#cc0000")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "#2a2a2a")}
+            >
+              {uploading ? (
+                <p style={{ color:"#888", margin:0, fontSize:14 }}>Reading file…</p>
+              ) : preview && form.image.startsWith("data:") ? (
+                <div>
+                  <img src={preview} alt="preview" style={{ maxHeight:160, maxWidth:"100%", borderRadius:8, objectFit:"cover" }} />
+                  <p style={{ color:"#666", fontSize:11, marginTop:8, marginBottom:0 }}>Click or drag to replace</p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ color:"#888", margin:"0 0 6px", fontSize:28 }}>🖼️</p>
+                  <p style={{ color:"#888", margin:"0 0 4px", fontSize:14 }}>Click to choose a photo, or drag one here</p>
+                  <p style={{ color:"#555", margin:0, fontSize:11 }}>JPG, PNG, WEBP — max 1.5 MB</p>
+                </>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display:"none" }} />
+            </div>
+          </Field>
         )}
+
+        {/* URL mode */}
+        {inputMode === "url" && (
+          <Field label="Image URL">
+            <ImageUrlTip />
+            <input style={S.input} value={form.image.startsWith("data:") ? "" : form.image} onChange={e => handleUrlChange(e.target.value)} placeholder="https://i.imgur.com/xxxxxx.jpg" />
+            {preview && !form.image.startsWith("data:") && (
+              <div style={{ marginTop:12 }}>
+                <img src={preview} alt="preview" onError={() => showToast("⚠️ Image URL did not load. Check the link.", true)}
+                  style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%" }} />
+              </div>
+            )}
+          </Field>
+        )}
+
         <div style={{ display:"flex", gap:10, marginTop:20 }}>
-          <button onClick={saveItem} style={S.btnPrimary}>{editing ? "Save Changes" : "Add to Gallery"}</button>
+          <button onClick={saveItem} style={S.btnPrimary} disabled={uploading}>
+            {editing ? "Save Changes" : "Add to Gallery"}
+          </button>
           {editing && <button onClick={cancel} style={S.btnGhost}>Cancel</button>}
         </div>
       </div>
-      <div style={S.imageGrid}>
-        {items.map(item => (
-          <div key={item.id} style={S.imageCard}>
-            <img src={item.image} alt={item.title} style={S.thumb} />
-            <div style={{ padding:"10px 12px" }}>
-              <p style={{ margin:0, fontWeight:600, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.title}</p>
-              <p style={{ margin:"2px 0 10px", fontSize:11, color:"#cc0000", textTransform:"uppercase", letterSpacing:1 }}>{item.category}</p>
-              <div style={{ display:"flex", gap:6 }}>
-                <button onClick={() => editItem(item)} style={S.btnSm}>Edit</button>
-                <button onClick={() => deleteItem(item.id)} style={S.btnSmDanger}>Delete</button>
+
+      {/* Existing images grid */}
+      {items.length > 0 && (
+        <div style={S.imageGrid}>
+          {items.map(item => (
+            <div key={item.id} style={S.imageCard}>
+              <img src={item.image} alt={item.title} style={S.thumb} />
+              <div style={{ padding:"10px 12px" }}>
+                <p style={{ margin:0, fontWeight:600, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.title}</p>
+                <p style={{ margin:"2px 0 10px", fontSize:11, color:"#cc0000", textTransform:"uppercase", letterSpacing:1 }}>{item.category}</p>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={() => editItem(item)} style={S.btnSm}>Edit</button>
+                  <button onClick={() => deleteItem(item.id)} style={S.btnSmDanger}>Delete</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

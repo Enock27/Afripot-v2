@@ -41,6 +41,9 @@ function loadMenu(): MenuSection[] {
 function trySave(key: string, value: unknown): string | null {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    // Dispatch a storage event so same-tab listeners (public pages) also react.
+    // Native storage events only fire in *other* tabs, so we dispatch manually here.
+    window.dispatchEvent(new StorageEvent("storage", { key, storageArea: localStorage }));
     return null;
   } catch (e) {
     if (e instanceof DOMException && e.name === "QuotaExceededError") {
@@ -90,8 +93,23 @@ export function useAdminData() {
 // ─── public hooks (read-only, for public pages) ───────────────────────────────
 
 export function usePublicGallery(): GalleryItem[] {
-  const [items, setItems] = useState<GalleryItem[]>(galleryJson as GalleryItem[]);
-  useEffect(() => { setItems(loadGallery()); }, []);
+  // Initialize directly from localStorage (not static JSON) to avoid flash of stale data
+  const [items, setItems] = useState<GalleryItem[]>(() => loadGallery());
+
+  useEffect(() => {
+    // Refresh in case localStorage changed between SSR and hydration
+    setItems(loadGallery());
+
+    // Listen for admin saves from any tab/window and update immediately
+    function onStorage(e: StorageEvent) {
+      if (e.key === GALLERY_KEY) {
+        setItems(loadGallery());
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   return items;
 }
 

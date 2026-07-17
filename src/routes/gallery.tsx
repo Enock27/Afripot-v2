@@ -79,29 +79,47 @@ function GalleryPage() {
       {/* GALLERY GRID */}
       <section style={styles.gridSection}>
         <div style={styles.container}>
-          <motion.div layout style={styles.galleryGrid}>
-            <AnimatePresence>
-              {filteredItems.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
-                  style={styles.imageCard}
-                  onClick={() => setSelectedImage(item)}
-                  className="gallery-card"
-                >
-                  <img src={item.image} alt={item.title} style={styles.image} loading="lazy" />
-                  <div className="gallery-overlay" style={styles.imageOverlay}>
-                    <h3 style={styles.imageTitle}>{item.title}</h3>
-                    <span style={styles.imageCategory}>{item.category}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          {galleryItems.length === 0 ? (
+            /* ── No images at all ── */
+            <div style={styles.emptyState}>
+              <p style={styles.emptyIcon}>🖼️</p>
+              <h2 style={styles.emptyHeading}>Gallery Coming Soon</h2>
+              <p style={styles.emptyText}>
+                Our photo gallery is being curated. Check back soon for a visual feast.
+              </p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            /* ── Category has no images ── */
+            <div style={styles.emptyState}>
+              <p style={styles.emptyIcon}>📂</p>
+              <h2 style={styles.emptyHeading}>No photos in "{activeCategory}" yet</h2>
+              <p style={styles.emptyText}>Try a different category or check back later.</p>
+            </div>
+          ) : (
+            <motion.div layout style={styles.galleryGrid}>
+              <AnimatePresence>
+                {filteredItems.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3 }}
+                    style={styles.imageCard}
+                    onClick={() => setSelectedImage(item)}
+                    className="gallery-card"
+                  >
+                    <img src={item.image} alt={item.title} style={styles.image} loading="lazy" />
+                    <div className="gallery-overlay" style={styles.imageOverlay}>
+                      <h3 style={styles.imageTitle}>{item.title}</h3>
+                      <span style={styles.imageCategory}>{item.category}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -216,6 +234,35 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '60px 0',
     backgroundColor: '#000000',
     minHeight: '50vh'
+  },
+  emptyState: {
+    minHeight: '40vh',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center' as const,
+    padding: '60px 20px',
+  },
+  emptyIcon: {
+    fontSize: '4rem',
+    margin: '0 0 20px',
+  },
+  emptyHeading: {
+    fontFamily: '"Julius Sans One", sans-serif',
+    fontSize: 'clamp(1.4rem, 3vw, 2rem)',
+    color: '#FFFFFF',
+    fontWeight: 400,
+    letterSpacing: '0.04em',
+    margin: '0 0 12px',
+  },
+  emptyText: {
+    color: '#666666',
+    fontSize: '1rem',
+    fontWeight: 300,
+    maxWidth: '400px',
+    lineHeight: 1.6,
+    margin: 0,
   },
   galleryGrid: {
     display: 'grid',
