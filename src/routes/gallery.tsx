@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePublicGallery } from "@/hooks/useAdminData";
-import { GalleryItem } from "@/data/galleryData";
+import type { GalleryItem } from "@/data/galleryData";
 
 export const Route = createFileRoute("/gallery")({
   component: GalleryPage,
   head: () => ({
     meta: [
       { title: "Gallery — AfriPot Restaurant" },
-      { name: "description", content: "Explore our beautiful dishes and restaurant atmosphere." },
+      { name: "description", content: "A visual journey through AfriPot." },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -24,373 +24,252 @@ export const Route = createFileRoute("/gallery")({
   }),
 });
 
-const categories = ["All", "Food", "Drinks", "Atmosphere"];
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+/** Split items into N columns as evenly as possible */
+function buildColumns(items: GalleryItem[], count: number): GalleryItem[][] {
+  const cols: GalleryItem[][] = Array.from({ length: count }, () => []);
+  items.forEach((item, i) => cols[i % count].push(item));
+  return cols;
+}
+
+/** How many columns based on viewport width */
+function columnCount(width: number): number {
+  if (width >= 1024) return 3;
+  if (width >= 640)  return 2;
+  return 1;
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────────
 
 function GalleryPage() {
-  const galleryItems = usePublicGallery();
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
+  const { items, loading, error } = usePublicGallery();
+  const [selected, setSelected]   = useState<GalleryItem | null>(null);
+  const [cols, setCols]           = useState(3);
 
-  const filteredItems = galleryItems.filter(
-    (item) => activeCategory === "All" || item.category === activeCategory
-  );
+  // Responsive column count
+  useEffect(() => {
+    function update() { setCols(columnCount(window.innerWidth)); }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // Close lightbox on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setSelected(null); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const columns = buildColumns(items, cols);
 
   return (
-    <div style={styles.pageWrapper}>
-      <style>{customCSS}</style>
+    <div style={{ backgroundColor: "#0a0a0a", minHeight: "100vh", fontFamily: '"Quicksand", sans-serif' }}>
       <SiteHeader />
 
-      {/* HERO SECTION */}
-      <section style={styles.heroSection}>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <p style={styles.heroEyebrow}>VISUAL EXPERIENCE</p>
-          <h1 style={styles.heroHeading}>OUR GALLERY</h1>
-          <div style={styles.heroDivider}></div>
-          <p style={styles.heroTagline}>A feast for your eyes before the real thing.</p>
+      {/* ── Hero ── */}
+      <section style={S.hero}>
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} style={{ textAlign: "center" }}>
+          <p style={S.eyebrow}>VISUAL EXPERIENCE</p>
+          <h1 style={S.heading}>OUR GALLERY</h1>
+          <div style={S.divider} />
         </motion.div>
       </section>
 
-      {/* FILTER TABS */}
-      <section style={styles.filterSection}>
-        <div style={styles.container}>
-          <div style={styles.tabsWrapper}>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                style={{
-                  ...styles.tabButton,
-                  backgroundColor: activeCategory === cat ? "#CC0000" : "transparent",
-                  color: activeCategory === cat ? "#FFFFFF" : "#CCCCCC",
-                  borderColor: activeCategory === cat ? "#CC0000" : "#333333",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
+      {/* ── Grid ── */}
+      <section style={S.gridSection}>
+        {loading && (
+          <div style={S.center}>
+            <p style={{ color: "#555", fontSize: 14 }}>Loading…</p>
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* GALLERY GRID */}
-      <section style={styles.gridSection}>
-        <div style={styles.container}>
-          {galleryItems.length === 0 ? (
-            /* ── No images at all ── */
-            <div style={styles.emptyState}>
-              <p style={styles.emptyIcon}>🖼️</p>
-              <h2 style={styles.emptyHeading}>Gallery Coming Soon</h2>
-              <p style={styles.emptyText}>
-                Our photo gallery is being curated. Check back soon for a visual feast.
-              </p>
-            </div>
-          ) : filteredItems.length === 0 ? (
-            /* ── Category has no images ── */
-            <div style={styles.emptyState}>
-              <p style={styles.emptyIcon}>📂</p>
-              <h2 style={styles.emptyHeading}>No photos in "{activeCategory}" yet</h2>
-              <p style={styles.emptyText}>Try a different category or check back later.</p>
-            </div>
-          ) : (
-            <motion.div layout style={styles.galleryGrid}>
-              <AnimatePresence>
-                {filteredItems.map((item) => (
+        {!loading && error && (
+          <div style={S.center}>
+            <p style={{ color: "#cc0000", fontSize: 14 }}>Failed to load gallery.</p>
+          </div>
+        )}
+
+        {!loading && !error && items.length === 0 && (
+          <div style={S.center}>
+            <p style={{ color: "#444", fontSize: 14 }}>Gallery coming soon.</p>
+          </div>
+        )}
+
+        {!loading && !error && items.length > 0 && (
+          <div style={{ ...S.masonry, gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+            {columns.map((col, ci) => (
+              <div key={ci} style={S.column}>
+                {col.map((item) => (
                   <motion.div
                     key={item.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.3 }}
-                    style={styles.imageCard}
-                    onClick={() => setSelectedImage(item)}
-                    className="gallery-card"
+                    style={S.tile}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    onClick={() => setSelected(item)}
+                    className="gallery-tile"
                   >
-                    <img src={item.image} alt={item.title} style={styles.image} loading="lazy" />
-                    <div className="gallery-overlay" style={styles.imageOverlay}>
-                      <h3 style={styles.imageTitle}>{item.title}</h3>
-                      <span style={styles.imageCategory}>{item.category}</span>
-                    </div>
+                    <img
+                      src={item.image}
+                      alt={item.title || "Gallery photo"}
+                      style={S.img}
+                      loading="lazy"
+                    />
                   </motion.div>
                 ))}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* LIGHTBOX MODAL */}
+      {/* ── Lightbox ── */}
       <AnimatePresence>
-        {selectedImage && (
+        {selected && (
           <motion.div
+            style={S.overlay}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={styles.lightboxOverlay}
-            onClick={() => setSelectedImage(null)}
+            onClick={() => setSelected(null)}
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              style={styles.lightboxContent}
-              onClick={(e) => e.stopPropagation()}
+              style={S.lightboxWrap}
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: 1,    opacity: 1 }}
+              exit={{ scale: 0.88,    opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
+              onClick={e => e.stopPropagation()}
             >
-              <button style={styles.closeButton} onClick={() => setSelectedImage(null)}>✕</button>
-              <img src={selectedImage.image} alt={selectedImage.title} style={styles.lightboxImage} />
-              <div style={styles.lightboxInfo}>
-                <h2 style={styles.lightboxTitle}>{selectedImage.title}</h2>
-                <span style={styles.lightboxCategory}>{selectedImage.category}</span>
-              </div>
+              <img src={selected.image} alt={selected.title || "Photo"} style={S.lightboxImg} />
+              <button style={S.close} onClick={() => setSelected(null)} aria-label="Close">✕</button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      <style>{css}</style>
       <SiteFooter />
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  pageWrapper: {
-    backgroundColor: '#000000',
-    color: '#FFFFFF',
-    fontFamily: '"Quicksand", sans-serif',
-    minHeight: '100vh',
-    overflowX: 'hidden'
+// ─── styles ───────────────────────────────────────────────────────────────────
+
+const S: Record<string, React.CSSProperties> = {
+  hero: {
+    padding: "72px 20px 48px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#0a0a0a",
   },
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px'
-  },
-  heroSection: {
-    minHeight: '35vh',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    padding: '60px 20px',
-    background: 'solid black',
-    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(204, 0, 0, 0.05) 50px), repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(204, 0, 0, 0.05) 50px)',
-    backgroundSize: '50px 50px'
-  },
-  heroEyebrow: {
-    color: '#CC0000',
-    fontSize: '0.85rem',
+  eyebrow: {
+    color: "#CC0000",
+    fontSize: "0.75rem",
     fontWeight: 600,
-    letterSpacing: '0.2em',
-    marginBottom: '10px'
+    letterSpacing: "0.22em",
+    marginBottom: 10,
+    textTransform: "uppercase",
   },
-  heroHeading: {
+  heading: {
     fontFamily: '"Julius Sans One", sans-serif',
-    fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-    color: '#FFFFFF',
-    letterSpacing: '0.06em',
-    margin: '0 0 20px 0',
-    fontWeight: 400
+    fontSize: "clamp(2rem, 5vw, 4rem)",
+    color: "#fff",
+    letterSpacing: "0.06em",
+    margin: "0 0 18px",
+    fontWeight: 400,
   },
-  heroDivider: {
-    width: '60px',
-    height: '3px',
-    backgroundColor: '#CC0000',
-    margin: '0 auto 20px'
-  },
-  heroTagline: {
-    fontSize: '1.1rem',
-    color: '#CCCCCC',
-    fontWeight: 300
-  },
-  filterSection: {
-    padding: '40px 0',
-    backgroundColor: '#050505',
-    borderBottom: '1px solid #1a1a1a'
-  },
-  tabsWrapper: {
-    display: 'flex',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: '15px'
-  },
-  tabButton: {
-    fontFamily: '"Quicksand", sans-serif',
-    fontSize: '0.9rem',
-    fontWeight: 600,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    padding: '10px 24px',
-    borderRadius: '30px',
-    border: '1px solid',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
+  divider: {
+    width: 56,
+    height: 3,
+    backgroundColor: "#CC0000",
+    margin: "0 auto",
   },
   gridSection: {
-    padding: '60px 0',
-    backgroundColor: '#000000',
-    minHeight: '50vh'
+    maxWidth: 1280,
+    margin: "0 auto",
+    padding: "0 12px 80px",
   },
-  emptyState: {
-    minHeight: '40vh',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center' as const,
-    padding: '60px 20px',
+  masonry: {
+    display: "grid",
+    gap: 6,
+    alignItems: "start",
   },
-  emptyIcon: {
-    fontSize: '4rem',
-    margin: '0 0 20px',
+  column: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
   },
-  emptyHeading: {
-    fontFamily: '"Julius Sans One", sans-serif',
-    fontSize: 'clamp(1.4rem, 3vw, 2rem)',
-    color: '#FFFFFF',
-    fontWeight: 400,
-    letterSpacing: '0.04em',
-    margin: '0 0 12px',
+  tile: {
+    cursor: "zoom-in",
+    overflow: "hidden",
+    borderRadius: 4,
+    backgroundColor: "#111",
+    lineHeight: 0,      // removes inline gap below img
   },
-  emptyText: {
-    color: '#666666',
-    fontSize: '1rem',
-    fontWeight: 300,
-    maxWidth: '400px',
-    lineHeight: 1.6,
-    margin: 0,
+  img: {
+    width: "100%",
+    height: "auto",
+    display: "block",
+    transition: "transform 0.45s ease",
   },
-  galleryGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: '24px'
+  center: {
+    minHeight: "40vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  imageCard: {
-    position: 'relative',
-    aspectRatio: '4/3',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    backgroundColor: '#111'
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    transition: 'transform 0.5s ease'
-  },
-  imageOverlay: {
-    position: 'absolute',
+  overlay: {
+    position: "fixed",
     inset: 0,
-    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-    padding: '24px',
-    opacity: 0,
-    transition: 'opacity 0.3s ease'
-  },
-  imageTitle: {
-    fontFamily: '"Julius Sans One", sans-serif',
-    fontSize: '1.4rem',
-    color: '#FFFFFF',
-    margin: '0 0 8px 0',
-    transform: 'translateY(20px)',
-    transition: 'transform 0.3s ease'
-  },
-  imageCategory: {
-    color: '#CC0000',
-    fontSize: '0.85rem',
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    transform: 'translateY(20px)',
-    transition: 'transform 0.3s ease 0.1s'
-  },
-  lightboxOverlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.95)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: "rgba(0,0,0,0.92)",
+    backdropFilter: "blur(12px)",
     zIndex: 1000,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px'
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    cursor: "zoom-out",
   },
-  lightboxContent: {
-    position: 'relative',
-    maxWidth: '1000px',
-    width: '100%',
-    backgroundColor: '#111',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 25px 50px -12px rgba(204, 0, 0, 0.3)'
+  lightboxWrap: {
+    position: "relative",
+    maxWidth: "min(92vw, 1100px)",
+    maxHeight: "90vh",
+    lineHeight: 0,
+    cursor: "default",
   },
-  lightboxImage: {
-    width: '100%',
-    maxHeight: '75vh',
-    objectFit: 'contain',
-    backgroundColor: '#000'
+  lightboxImg: {
+    width: "100%",
+    maxHeight: "90vh",
+    objectFit: "contain",
+    borderRadius: 6,
+    display: "block",
   },
-  lightboxInfo: {
-    padding: '24px',
-    textAlign: 'center',
-    borderTop: '1px solid #222'
+  close: {
+    position: "absolute",
+    top: -16,
+    right: -16,
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    border: "none",
+    background: "#CC0000",
+    color: "#fff",
+    fontSize: 14,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 700,
+    lineHeight: 1,
+    zIndex: 10,
   },
-  lightboxTitle: {
-    fontFamily: '"Julius Sans One", sans-serif',
-    fontSize: '2rem',
-    color: '#FFF',
-    margin: '0 0 8px 0'
-  },
-  lightboxCategory: {
-    color: '#CC0000',
-    fontSize: '1rem',
-    fontWeight: 600,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase'
-  },
-  closeButton: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    color: '#FFF',
-    border: 'none',
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    fontSize: '1.2rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background 0.3s ease',
-    zIndex: 10
-  }
 };
 
-const customCSS = `
-  .gallery-card:hover img {
-    transform: scale(1.05);
-  }
-  .gallery-card:hover .gallery-overlay {
-    opacity: 1;
-  }
-  .gallery-card:hover .gallery-overlay h3,
-  .gallery-card:hover .gallery-overlay span {
-    transform: translateY(0);
-  }
-  .gallery-card {
-    border: 1px solid #1a1a1a;
-  }
-  .gallery-card:hover {
-    border-color: #CC0000;
-    box-shadow: 0 10px 30px rgba(204, 0, 0, 0.2);
-  }
+const css = `
+  .gallery-tile img:hover { transform: scale(1.04); }
 `;

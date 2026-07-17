@@ -1,45 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { GalleryItem } from "@/data/galleryData";
 import type { Event } from "@/data/eventsData";
 import type { MenuItem, MenuSection } from "@/data/menuData";
-import galleryJson from "@/data/galleryData.json";
 import eventsJson from "@/data/eventsData.json";
 import { defaultMenuSections } from "@/data/menuData";
+import { fetchGallery, persistGallery } from "@/lib/galleryStore";
 
-const GALLERY_KEY = "afripot_gallery";
-const EVENTS_KEY  = "afripot_events";
-const MENU_KEY    = "afripot_menu";
+// ─── localStorage keys (events + menu) ───────────────────────────────────────
+const EVENTS_KEY = "afripot_events";
+const MENU_KEY   = "afripot_menu";
 
-// ─── in-process pub/sub ───────────────────────────────────────────────────────
-// StorageEvent only fires in *other* tabs. For same-tab (SPA) reactivity we
-// maintain a tiny typed event bus so every subscriber updates the moment a save
-// is committed — no polling, no delay.
-
-type DataKey = typeof GALLERY_KEY | typeof EVENTS_KEY | typeof MENU_KEY;
+// ─── in-process pub/sub (instant same-tab updates) ───────────────────────────
 type Listener = () => void;
+const galleryListeners = new Set<Listener>();
 
-const listeners = new Map<DataKey, Set<Listener>>();
+function notifyGallery() { galleryListeners.forEach(fn => fn()); }
 
-function subscribe(key: DataKey, fn: Listener): () => void {
-  if (!listeners.has(key)) listeners.set(key, new Set());
-  listeners.get(key)!.add(fn);
-  return () => listeners.get(key)!.delete(fn);
+export function subscribeGallery(fn: Listener): () => void {
+  galleryListeners.add(fn);
+  return () => galleryListeners.delete(fn);
 }
 
-function notify(key: DataKey) {
-  listeners.get(key)?.forEach(fn => fn());
-}
-
-// ─── loaders ─────────────────────────────────────────────────────────────────
-
-function loadGallery(): GalleryItem[] {
-  try {
-    const raw = localStorage.getItem(GALLERY_KEY);
-    if (raw) return JSON.parse(raw) as GalleryItem[];
-  } catch {}
-  return galleryJson as GalleryItem[];
-}
-
+// ─── localStorage helpers (events + menu) ────────────────────────────────────
 function loadEvents(): Event[] {
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
@@ -56,25 +38,19 @@ function loadMenu(): MenuSection[] {
   return defaultMenuSections();
 }
 
-// ─── safe saver ───────────────────────────────────────────────────────────────
-
-function trySave(key: DataKey, value: unknown): string | null {
+function trySaveLocal(key: string, value: unknown): string | null {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-    // 1. Notify same-tab subscribers immediately via the in-process bus
-    notify(key);
-    // 2. Dispatch StorageEvent so *other* tabs also update
     window.dispatchEvent(new StorageEvent("storage", { key, storageArea: localStorage }));
     return null;
   } catch (e) {
-    if (e instanceof DOMException && e.name === "QuotaExceededError") {
-      return "Storage full. Use image URLs instead of uploads, or delete some items first.";
-    }
+    if (e instanceof DOMException && e.name === "QuotaExceededError")
+      return "Storage full. Please delete some items first.";
     return "Failed to save. Please try again.";
   }
 }
 
-// ─── admin hook (full CRUD) ───────────────────────────────────────────────────
+// ─── admin hook ───────────────────────────────────────────────────────────────
 
 export function useAdminData() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -83,26 +59,33 @@ export function useAdminData() {
   const [ready,   setReady]   = useState(false);
 
   useEffect(() => {
-    setGallery(loadGallery());
     setEvents(loadEvents());
     setMenu(loadMenu());
-    setReady(true);
+    fetchGallery().then(items => {
+      setGallery(items);
+      setReady(true);
+    });
   }, []);
 
-  const saveGallery = useCallback((items: GalleryItem[]): string | null => {
-    const err = trySave(GALLERY_KEY, items);
-    if (!err) setGallery(items);
-    return err;
+  const saveGallery = useCallback(async (items: GalleryItem[]): Promise<string | null> => {
+    try {
+      await persistGallery(items);
+      setGallery(items);
+      notifyGallery(); // instant update for any mounted public gallery
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
   }, []);
 
   const saveEvents = useCallback((items: Event[]): string | null => {
-    const err = trySave(EVENTS_KEY, items);
+    const err = trySaveLocal(EVENTS_KEY, items);
     if (!err) setEvents(items);
     return err;
   }, []);
 
   const saveMenu = useCallback((sections: MenuSection[]): string | null => {
-    const err = trySave(MENU_KEY, sections);
+    const err = trySaveLocal(MENU_KEY, sections);
     if (!err) setMenu(sections);
     return err;
   }, []);
@@ -110,66 +93,79 @@ export function useAdminData() {
   return { gallery, events, menu, saveGallery, saveEvents, saveMenu, ready };
 }
 
-// ─── public hooks (read-only, for public pages) ───────────────────────────────
+// ─── public gallery hook ──────────────────────────────────────────────────────
 
-export function usePublicGallery(): GalleryItem[] {
-  const [items, setItems] = useState<GalleryItem[]>(() => loadGallery());
+export function usePublicGallery(): { items: GalleryItem[]; loading: boolean; error: string | null } {
+  const [items,   setItems]   = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    // Sync on mount in case localStorage changed before this component rendered
-    setItems(loadGallery());
-
-    // Same-tab updates via the in-process bus (fires instantly on admin save)
-    const unsubscribe = subscribe(GALLERY_KEY, () => setItems(loadGallery()));
-
-    // Cross-tab updates via the native StorageEvent
-    function onStorage(e: StorageEvent) {
-      if (e.key === GALLERY_KEY) setItems(loadGallery());
-    }
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener("storage", onStorage);
-    };
+  const load = useCallback(() => {
+    fetchGallery().then(data => {
+      if (mountedRef.current) { setItems(data); setError(null); setLoading(false); }
+    }).catch(e => {
+      if (mountedRef.current) { setError(String(e)); setLoading(false); }
+    });
   }, []);
 
-  return items;
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+
+    // Same-tab instant update when admin saves
+    const unsub = subscribeGallery(load);
+
+    // Cross-tab update — not needed for API-based store, but keep for safety
+    function onStorage(_e: StorageEvent) { /* no-op */ }
+    window.addEventListener("storage", onStorage);
+
+    // Re-sync when user navigates back to this page/tab
+    function onVisible() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      mountedRef.current = false;
+      unsub();
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
+
+  return { items, loading, error };
 }
+
+// ─── public events hook ───────────────────────────────────────────────────────
 
 export function usePublicEvents(): Event[] {
   const [items, setItems] = useState<Event[]>(() => loadEvents());
 
   useEffect(() => {
     setItems(loadEvents());
-    const unsubscribe = subscribe(EVENTS_KEY, () => setItems(loadEvents()));
     function onStorage(e: StorageEvent) {
       if (e.key === EVENTS_KEY) setItems(loadEvents());
     }
     window.addEventListener("storage", onStorage);
-    return () => {
-      unsubscribe();
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   return items;
 }
+
+// ─── public menu hook ─────────────────────────────────────────────────────────
 
 export function usePublicMenu(): MenuSection[] {
   const [sections, setSections] = useState<MenuSection[]>(() => loadMenu());
 
   useEffect(() => {
     setSections(loadMenu());
-    const unsubscribe = subscribe(MENU_KEY, () => setSections(loadMenu()));
     function onStorage(e: StorageEvent) {
       if (e.key === MENU_KEY) setSections(loadMenu());
     }
     window.addEventListener("storage", onStorage);
-    return () => {
-      unsubscribe();
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   return sections;

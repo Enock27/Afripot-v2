@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useAdminData } from "@/hooks/useAdminData";
@@ -14,32 +14,11 @@ const GALLERY_CATEGORIES = ["Food", "Drinks", "Atmosphere"];
 
 function uid() { return String(Date.now() + Math.floor(Math.random() * 9999)); }
 
-/** Converts any Imgur single-image URL to a direct embeddable image URL.
- *  Returns null if the URL is an Imgur album (cannot be embedded). */
-function normalizeImageUrl(url: string): { url: string; error?: string } {
+/** Validates that a URL looks like a real direct image link */
+function validateImageUrl(url: string): { url: string; error?: string } {
   const trimmed = url.trim();
   if (!trimmed) return { url: trimmed };
-
-  // Detect Imgur ALBUM — cannot embed, must reject
-  if (/imgur\.com\/a\//i.test(trimmed)) {
-    return { url: trimmed, error: "That is an Imgur album link. Open the album, click on a single photo, then right-click it → Copy image address." };
-  }
-  if (/imgur\.com\/gallery\//i.test(trimmed)) {
-    return { url: trimmed, error: "That is an Imgur gallery link. Open it, click on a single photo, then right-click → Copy image address." };
-  }
-
-  // Already a direct image URL (ends with image extension)
-  if (/\.(jpg|jpeg|png|gif|webp|avif)(\?.*)?$/i.test(trimmed)) return { url: trimmed };
-
-  // Imgur single-image page: imgur.com/AbCdEfG
-  const imgurMatch = trimmed.match(/^https?:\/\/(?:www\.)?imgur\.com\/([a-zA-Z0-9]{5,8})\/?$/);
-  if (imgurMatch) return { url: `https://i.imgur.com/${imgurMatch[1]}.jpg` };
-
-  // i.imgur.com without extension
-  const iImgurMatch = trimmed.match(/^https?:\/\/i\.imgur\.com\/([a-zA-Z0-9]+)\/?$/);
-  if (iImgurMatch) return { url: `https://i.imgur.com/${iImgurMatch[1]}.jpg` };
-
-  // Pass through (ImgBB, Google Drive, etc.)
+  try { new URL(trimmed); } catch { return { url: trimmed, error: "That doesn't look like a valid URL." }; }
   return { url: trimmed };
 }
 
@@ -142,18 +121,18 @@ function useToast() {
   return { toastMsg: state.msg, toastError: state.isError, showToast: show };
 }
 
-// ─── URL tip banner ───────────────────────────────────────────────────────────
-function ImageUrlTip() {
+// ─── ImgBB tip banner ─────────────────────────────────────────────────────────
+function ImgBBTip() {
   return (
-    <div style={{ background:"#0d1a0d", border:"1px solid #1a3a1a", borderRadius:8, padding:"12px 16px", marginBottom:12, fontSize:12, color:"#7aaa7a", lineHeight:1.8 }}>
-      <strong style={{ color:"#90cc90", fontSize:13 }}>📎 How to get an image URL — use ImgBB (recommended)</strong>
+    <div style={{ background:"#0d1520", border:"1px solid #1a3050", borderRadius:8, padding:"12px 16px", marginBottom:12, fontSize:12, color:"#7aaad0", lineHeight:1.8 }}>
+      <strong style={{ color:"#90c0ee", fontSize:13 }}>📸 How to get the image URL from your ImgBB account</strong>
       <ol style={{ margin:"8px 0 0", paddingLeft:18, color:"#aaa" }}>
-        <li>Go to <a href="https://imgbb.com" target="_blank" rel="noreferrer" style={{ color:"#6bc96b" }}>imgbb.com</a> → click <strong style={{ color:"#fff" }}>Start Uploading</strong> → pick your photo</li>
-        <li>After upload, scroll down and find <strong style={{ color:"#fff" }}>Direct link</strong> — copy that URL</li>
-        <li>Paste it in the field below — it ends in <code style={{ color:"#aaa" }}>.jpg</code> and will preview immediately</li>
+        <li>Go to <a href="https://mbagariye-enock.imgbb.com" target="_blank" rel="noreferrer" style={{ color:"#6baee0" }}>mbagariye-enock.imgbb.com</a> and open the image</li>
+        <li>Click the image to open it, then right-click it → <strong style={{ color:"#fff" }}>Copy image address</strong></li>
+        <li>Paste that URL below — it should end in <code style={{ color:"#aaa" }}>.jpg</code> or <code style={{ color:"#aaa" }}>.png</code></li>
       </ol>
-      <div style={{ marginTop:8, padding:"8px 10px", background:"#1a0a0a", borderRadius:6, border:"1px solid #3a1a1a", color:"#ff8888", fontSize:11 }}>
-        ⚠️ <strong>Imgur album links (imgur.com/a/…) do not work.</strong> If you use Imgur, open the album, click one photo, then right-click the image itself → <em>Copy image address</em> to get a direct <code>.jpg</code> link.
+      <div style={{ marginTop:8, color:"#aaa", fontSize:11 }}>
+        Or upload a new photo at <a href="https://imgbb.com/upload" target="_blank" rel="noreferrer" style={{ color:"#6baee0" }}>imgbb.com/upload</a>, then copy the <strong style={{ color:"#fff" }}>Direct link</strong>.
       </div>
     </div>
   );
@@ -162,103 +141,47 @@ function ImageUrlTip() {
 // ─── gallery admin ────────────────────────────────────────────────────────────
 const emptyGalleryItem = (): GalleryItem => ({ id: uid(), title: "", category: "Food", image: "" });
 
-/** Read a File as a base-64 data URL */
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/** Rough size check — warn if the data URL will be large in localStorage */
-const MAX_UPLOAD_BYTES = 1.5 * 1024 * 1024; // 1.5 MB per image
-
-function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: GalleryItem[]) => string | null }) {
+function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: GalleryItem[]) => Promise<string | null> }) {
   const [form, setForm]       = useState<GalleryItem>(emptyGalleryItem());
   const [editing, setEditing] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
-  const [inputMode, setInputMode] = useState<"url" | "upload">("upload");
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving]   = useState(false);
   const { toastMsg, toastError, showToast } = useToast();
 
   function handleUrlChange(url: string) {
-    const { url: normalized, error } = normalizeImageUrl(url);
+    const { url: normalized, error } = validateImageUrl(url);
     setForm(f => ({ ...f, image: normalized }));
     setPreview(normalized);
     if (error) showToast("❌ " + error, true);
   }
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      showToast("⚠️ Please select an image file (jpg, png, webp…)", true);
-      return;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      showToast("⚠️ Image is larger than 1.5 MB. Please compress it first or use a URL instead.", true);
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setForm(f => ({ ...f, image: dataUrl }));
-      setPreview(dataUrl);
-      // Pre-fill title from filename if blank
-      setForm(f => ({
-        ...f,
-        image: dataUrl,
-        title: f.title.trim() ? f.title : file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
-      }));
-    } catch {
-      showToast("❌ Failed to read file. Please try again.", true);
-    } finally {
-      setUploading(false);
-      // Reset so the same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }, [showToast]);
-
-  // Drag-and-drop onto the upload zone
-  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    // Reuse the same logic by synthesising a change event target
-    const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
-    await handleFileChange(fakeEvent);
-  }, [handleFileChange]);
-
-  function saveItem() {
+  async function saveItem() {
     if (!form.title.trim()) { showToast("⚠️ Title is required.", true); return; }
-    if (!form.image.trim()) { showToast("⚠️ Image is required.", true); return; }
+    if (!form.image.trim()) { showToast("⚠️ Image URL is required.", true); return; }
     const next = editing
       ? items.map(i => i.id === editing ? { ...form } : i)
       : [{ ...form, id: uid() }, ...items];
-    const err = onSave(next);
+    setSaving(true);
+    const err = await onSave(next);
+    setSaving(false);
     if (err) { showToast("❌ " + err, true); return; }
     showToast(editing ? "✅ Image updated!" : "✅ Image added to gallery!");
     setForm(emptyGalleryItem()); setEditing(null); setPreview("");
+  }
+
+  async function deleteItem(id: string) {
+    if (!confirm("Delete this image?")) return;
+    setSaving(true);
+    const err = await onSave(items.filter(i => i.id !== id));
+    setSaving(false);
+    if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted.");
   }
 
   function editItem(item: GalleryItem) {
     setForm({ ...item });
     setEditing(item.id);
     setPreview(item.image);
-    // If image is a data URL it was uploaded; show upload tab, otherwise URL tab
-    setInputMode(item.image.startsWith("data:") ? "upload" : "url");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  function deleteItem(id: string) {
-    if (confirm("Delete this image?")) {
-      const err = onSave(items.filter(i => i.id !== id));
-      if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted.");
-    }
   }
   function cancel() { setForm(emptyGalleryItem()); setEditing(null); setPreview(""); }
 
@@ -270,7 +193,6 @@ function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: Gal
       <div style={S.card}>
         <h3 style={S.cardTitle}>{editing ? "✏️ Edit Image" : "➕ Add New Image"}</h3>
 
-        {/* Title + Category */}
         <div style={S.grid2}>
           <Field label="Title">
             <input style={S.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Jollof Rice" />
@@ -282,72 +204,36 @@ function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: Gal
           </Field>
         </div>
 
-        {/* Mode toggle */}
-        <div style={{ display:"flex", gap:0, marginBottom:12, borderRadius:8, overflow:"hidden", border:"1px solid #2a2a2a", width:"fit-content" }}>
-          {(["upload","url"] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => { setInputMode(mode); setPreview(""); setForm(f => ({ ...f, image: "" })); }}
-              style={{ padding:"8px 20px", border:"none", cursor:"pointer", fontSize:12, fontWeight:600, letterSpacing:0.5, textTransform:"uppercase", background: inputMode === mode ? "#cc0000" : "#1a1a1a", color: inputMode === mode ? "#fff" : "#666", transition:"background 0.2s" }}
-            >
-              {mode === "upload" ? "📁 Upload File" : "🔗 Paste URL"}
-            </button>
-          ))}
-        </div>
+        <Field label="Image URL (from your ImgBB account)">
+          <ImgBBTip />
+          <input
+            style={S.input}
+            value={form.image}
+            onChange={e => handleUrlChange(e.target.value)}
+            placeholder="https://i.ibb.co/xxxxxx/photo.jpg"
+          />
+        </Field>
 
-        {/* Upload mode */}
-        {inputMode === "upload" && (
-          <Field label="Image File (jpg, png, webp — max 1.5 MB)">
-            <div
-              onDrop={handleDrop}
-              onDragOver={e => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ border:"2px dashed #2a2a2a", borderRadius:10, padding:"32px 20px", textAlign:"center", cursor:"pointer", background:"#141414", transition:"border-color 0.2s", position:"relative" }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "#cc0000")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "#2a2a2a")}
-            >
-              {uploading ? (
-                <p style={{ color:"#888", margin:0, fontSize:14 }}>Reading file…</p>
-              ) : preview && form.image.startsWith("data:") ? (
-                <div>
-                  <img src={preview} alt="preview" style={{ maxHeight:160, maxWidth:"100%", borderRadius:8, objectFit:"cover" }} />
-                  <p style={{ color:"#666", fontSize:11, marginTop:8, marginBottom:0 }}>Click or drag to replace</p>
-                </div>
-              ) : (
-                <>
-                  <p style={{ color:"#888", margin:"0 0 6px", fontSize:28 }}>🖼️</p>
-                  <p style={{ color:"#888", margin:"0 0 4px", fontSize:14 }}>Click to choose a photo, or drag one here</p>
-                  <p style={{ color:"#555", margin:0, fontSize:11 }}>JPG, PNG, WEBP — max 1.5 MB</p>
-                </>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display:"none" }} />
-            </div>
-          </Field>
+        {preview && (
+          <div style={{ marginTop:12 }}>
+            <p style={{ color:"#666", fontSize:11, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Preview</p>
+            <img
+              src={preview}
+              alt="preview"
+              onError={() => showToast("⚠️ Image did not load — check the URL.", true)}
+              style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%" }}
+            />
+          </div>
         )}
 
-        {/* URL mode */}
-        {inputMode === "url" && (
-          <Field label="Image URL">
-            <ImageUrlTip />
-            <input style={S.input} value={form.image.startsWith("data:") ? "" : form.image} onChange={e => handleUrlChange(e.target.value)} placeholder="https://i.imgur.com/xxxxxx.jpg" />
-            {preview && !form.image.startsWith("data:") && (
-              <div style={{ marginTop:12 }}>
-                <img src={preview} alt="preview" onError={() => showToast("⚠️ Image URL did not load. Check the link.", true)}
-                  style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%" }} />
-              </div>
-            )}
-          </Field>
-        )}
-
-        <div style={{ display:"flex", gap:10, marginTop:20 }}>
-          <button onClick={saveItem} style={S.btnPrimary} disabled={uploading}>
-            {editing ? "Save Changes" : "Add to Gallery"}
+        <div style={{ display:"flex", gap:10, marginTop:20, alignItems:"center" }}>
+          <button onClick={saveItem} style={{ ...S.btnPrimary, opacity: saving ? 0.6 : 1, cursor: saving ? "not-allowed" : "pointer" }} disabled={saving}>
+            {saving ? "Saving…" : editing ? "Save Changes" : "Add to Gallery"}
           </button>
-          {editing && <button onClick={cancel} style={S.btnGhost}>Cancel</button>}
+          {editing && <button onClick={cancel} style={S.btnGhost} disabled={saving}>Cancel</button>}
         </div>
       </div>
 
-      {/* Existing images grid */}
       {items.length > 0 && (
         <div style={S.imageGrid}>
           {items.map(item => (
@@ -380,7 +266,7 @@ function EventsAdmin({ items, onSave }: { items: Event[]; onSave: (e: Event[]) =
 
   function set(field: keyof Event, val: string | boolean) { setForm(f => ({ ...f, [field]: val })); }
   function handleImgChange(url: string) {
-    const { url: normalized, error } = normalizeImageUrl(url);
+    const { url: normalized, error } = validateImageUrl(url);
     set("image", normalized);
     setPreview(normalized);
     if (error) showToast("❌ " + error, true);
@@ -417,8 +303,8 @@ function EventsAdmin({ items, onSave }: { items: Event[]; onSave: (e: Event[]) =
           <textarea style={{ ...S.input, minHeight:80, resize:"vertical" }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Describe the event…" />
         </Field>
         <Field label="Banner Image URL">
-          <ImageUrlTip />
-          <input style={S.input} value={form.image} onChange={e => handleImgChange(e.target.value)} placeholder="https://i.imgur.com/xxxxxx.jpg" />
+          <ImgBBTip />
+          <input style={S.input} value={form.image} onChange={e => handleImgChange(e.target.value)} placeholder="https://i.ibb.co/xxxxxx/photo.jpg" />
         </Field>
         {preview && (
           <div style={{ marginTop:12 }}>

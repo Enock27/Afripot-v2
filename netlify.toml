@@ -2,7 +2,17 @@
   command   = "npm run build"
   publish   = "dist"
 
-# SPA fallback — every URL serves index.html so TanStack Router handles routing
+[functions]
+  directory         = "netlify/functions"
+  node_bundler      = "esbuild"
+
+# API routes → Netlify Functions (must come BEFORE the SPA fallback)
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback — every other URL serves index.html so TanStack Router handles routing
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
