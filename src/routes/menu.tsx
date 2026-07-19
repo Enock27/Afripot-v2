@@ -154,6 +154,8 @@ function HeroCarousel() {
                 src={src}
                 alt={`Dish ${i + 1}`}
                 className="w-full h-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
                 style={{
                   filter: isCenter ? "none" : "brightness(0.55)",
                 }}

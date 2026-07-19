@@ -145,6 +145,9 @@ function EventsPage() {
                 src={featuredEvent.image} 
                 alt={featuredEvent.title}
                 style={styles.bannerImage}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 onError={(e) => {
                   const img = e.target as HTMLImageElement;
                   img.style.display = 'none';
@@ -229,6 +232,8 @@ function EventsPage() {
                       src={event.image} 
                       alt={event.title} 
                       style={{...styles.cardImage, objectFit: 'contain', objectPosition: 'center', background: '#000'}}
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         const img = e.target as HTMLImageElement;
                         img.style.display = 'none';

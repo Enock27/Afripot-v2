@@ -14,7 +14,7 @@ import logo from "@/assets/AfriPot_logo2.png";
 import backgroundHero from "@/assets/BackgroundHero1.jpg";
 import HEROvid from "@/assets/HEROvid.mp4";
 import chomaImg from "@/assets/choma.jpg";
-import luwomboImg from "@/assets/Chicken_Luwombo.JPG";
+import luwomboImg from "@/assets/Chicken_Luwombo.jpg";
 import tilapiaImg from "@/assets/TILAPIA.jpg";
 import grillsImg from "@/assets/mixedgrills.jpg";
 import riceImg from "@/assets/AfripotRice.jpg";
@@ -44,6 +44,8 @@ function Index() {
           key={selectedDish}
           src={currentDish.img}
           alt={currentDish.alt}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover animate-in fade-in zoom-in duration-500"
           style={{
             animation: "fadeInZoom 0.6s ease-out forwards",
@@ -140,6 +142,9 @@ function Index() {
             <img 
               src={logo} 
               alt="AfriPot logo" 
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain brightness-125"
             />
           </div>
@@ -159,7 +164,7 @@ function Index() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
             {/* Left Image */}
             <ScrollReveal>
-              <img src={interiorStairs} alt="Antique staircase and wine cabinet" loading="lazy" className="w-full aspect-[3/4] object-cover shadow-elegant" />
+              <img src={interiorStairs} alt="Antique staircase and wine cabinet" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
             </ScrollReveal>
 
             {/* Center Content */}
@@ -183,7 +188,7 @@ function Index() {
 
             {/* Right Image */}
             <ScrollReveal>
-              <img src={dishPlate} alt="Plated signature dish" loading="lazy" className="w-full aspect-[3/4] object-cover shadow-elegant" />
+              <img src={dishPlate} alt="Plated signature dish" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
             </ScrollReveal>
           </div>
         </div>

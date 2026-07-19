@@ -116,6 +116,7 @@ function GalleryPage() {
                       alt={item.title || "Gallery photo"}
                       style={S.img}
                       loading="lazy"
+                      decoding="async"
                     />
                   </motion.div>
                 ))}
