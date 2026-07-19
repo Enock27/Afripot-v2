@@ -228,7 +228,7 @@ function EventsPage() {
                     <img 
                       src={event.image} 
                       alt={event.title} 
-                      style={{...styles.cardImage, objectFit: 'cover', objectPosition: 'center'}}
+                      style={{...styles.cardImage, objectFit: 'contain', objectPosition: 'center', background: '#000'}}
                       onError={(e) => {
                         const img = e.target as HTMLImageElement;
                         img.style.display = 'none';
@@ -466,31 +466,33 @@ const styles: Record<string, React.CSSProperties> = {
   },
   bannerImageContainer: {
     width: '100%',
-    aspectRatio: '16/9',
-    maxHeight: '600px',
+    maxHeight: '80vh',
+    minHeight: '300px',
     overflow: 'hidden',
     position: 'relative',
-    background: 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)',
+    background: '#000000',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
   },
   bannerImage: {
     width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    objectPosition: 'center',
-    position: 'absolute',
-    top: 0,
-    left: 0
+    height: 'auto',
+    maxHeight: '80vh',
+    objectFit: 'contain',
+    display: 'block',
+    position: 'relative',
+    top: 'unset',
+    left: 'unset'
   },
   bannerOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
-    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)'
+    height: '30%',
+    background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)',
+    pointerEvents: 'none'
   },
   detailsBlock: {
     backgroundColor: '#000000',
