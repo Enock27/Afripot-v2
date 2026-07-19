@@ -14,16 +14,18 @@
  *   }
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_URL = "https://jvhorkrewhqyrwutakrv.supabase.co";
 const BUCKET       = "site-assets";
 
 // ─── Build public URL directly from the bucket — no API call needed ──────────
 // Supabase public bucket URLs follow a predictable pattern so we can resolve
 // them synchronously without any fetch.
 function bucketUrl(key: string): string {
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${key}`;
+  // Encode path segments to handle spaces and special characters
+  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${encodedKey}`;
 }
 
 // ─── Asset key registry ───────────────────────────────────────────────────────
