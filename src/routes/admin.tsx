@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import React, { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useAdminData } from "@/hooks/useAdminData";
@@ -56,7 +56,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 // ─── dashboard ────────────────────────────────────────────────────────────────
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<"gallery"|"events"|"menu">("gallery");
-  const { gallery, events, menu, saveGallery, saveEvents, saveMenu, ready } = useAdminData();
+  const { gallery, events, menu, saveGallery, saveEvents, saveMenu, uploadImage, ready } = useAdminData();
   if (!ready) return <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", alignItems:"center", justifyContent:"center" }}><p style={{ color:"#666", fontFamily:"DM Sans,sans-serif" }}>Loading…</p></div>;
   return (
     <div style={{ minHeight:"100vh", background:"#0a0a0a", fontFamily:"DM Sans,sans-serif", color:"#fff" }}>
@@ -74,7 +74,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
       <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 24px" }}>
         {tab === "gallery" && <GalleryAdmin items={gallery} onSave={saveGallery} />}
-        {tab === "events"  && <EventsAdmin  items={events}  onSave={saveEvents}  />}
+        {tab === "events"  && <EventsAdmin  items={events}  onSave={saveEvents} onUpload={uploadImage} />}
         {tab === "menu"    && <MenuAdmin    sections={menu} onSave={saveMenu}    />}
       </div>
       <SiteFooter />
@@ -258,73 +258,230 @@ function GalleryAdmin({ items, onSave }: { items: GalleryItem[]; onSave: (i: Gal
 // ─── events admin ─────────────────────────────────────────────────────────────
 const emptyEvent = (): Event => ({ id: uid(), title: "", date: "", time: "", location: "", description: "", image: "", isFeatured: false });
 
-function EventsAdmin({ items, onSave }: { items: Event[]; onSave: (e: Event[]) => string | null }) {
-  const [form, setForm] = useState<Event>(emptyEvent());
-  const [editing, setEditing] = useState<string | null>(null);
-  const [preview, setPreview] = useState("");
+function EventsAdmin({
+  items,
+  onSave,
+  onUpload,
+}: {
+  items: Event[];
+  onSave: (e: Event[]) => Promise<string | null>;
+  onUpload: (file: File) => Promise<{ url: string; error: string | null }>;
+}) {
+  const [form, setForm]         = useState<Event>(emptyEvent());
+  const [editing, setEditing]   = useState<string | null>(null);
+  const [preview, setPreview]   = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imgMode, setImgMode]   = useState<"upload"|"url">("upload");
+  const fileRef = React.useRef<HTMLInputElement>(null);
   const { toastMsg, toastError, showToast } = useToast();
 
   function set(field: keyof Event, val: string | boolean) { setForm(f => ({ ...f, [field]: val })); }
-  function handleImgChange(url: string) {
+
+  function handleUrlChange(url: string) {
     const { url: normalized, error } = validateImageUrl(url);
     set("image", normalized);
     setPreview(normalized);
     if (error) showToast("❌ " + error, true);
   }
 
-  function saveItem() {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Local preview immediately
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    showToast("⏫ Uploading image…");
+    const { url, error } = await onUpload(file);
+    setUploading(false);
+    if (error) {
+      showToast("❌ Upload failed: " + error, true);
+      setPreview("");
+      return;
+    }
+    set("image", url);
+    setPreview(url);
+    showToast("✅ Image uploaded!");
+  }
+
+  async function saveItem() {
     if (!form.title.trim()) { showToast("⚠️ Title is required.", true); return; }
     if (!form.date)          { showToast("⚠️ Date is required.", true); return; }
-    if (!form.image.trim())  { showToast("⚠️ Image URL is required.", true); return; }
-    const next = editing ? items.map(i => i.id === editing ? { ...form } : i) : [{ ...form, id: uid() }, ...items];
-    const err = onSave(next);
+    if (!form.image.trim())  { showToast("⚠️ Image is required.", true); return; }
+    if (uploading)           { showToast("⏳ Wait for upload to finish.", true); return; }
+
+    const next = editing
+      ? items.map(i => i.id === editing ? { ...form } : i)
+      : [{ ...form, id: uid() }, ...items];
+
+    setSaving(true);
+    const err = await onSave(next);
+    setSaving(false);
+
     if (err) { showToast("❌ " + err, true); return; }
     showToast(editing ? "✅ Event updated!" : "✅ Event created!");
     setForm(emptyEvent()); setEditing(null); setPreview("");
+    if (fileRef.current) fileRef.current.value = "";
   }
 
-  function editItem(ev: Event) { setForm({ ...ev }); setEditing(ev.id); setPreview(ev.image); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function deleteItem(id: string) { if (confirm("Delete this event?")) { const err = onSave(items.filter(i => i.id !== id)); if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted."); } }
-  function cancel() { setForm(emptyEvent()); setEditing(null); setPreview(""); }
+  async function deleteItem(id: string) {
+    if (!confirm("Delete this event?")) return;
+    setSaving(true);
+    const err = await onSave(items.filter(i => i.id !== id));
+    setSaving(false);
+    if (err) showToast("❌ " + err, true); else showToast("🗑️ Deleted.");
+  }
+
+  function editItem(ev: Event) {
+    setForm({ ...ev });
+    setEditing(ev.id);
+    setPreview(ev.image);
+    // When editing an existing event that has a URL image, switch to URL mode
+    setImgMode(ev.image.startsWith("blob:") ? "upload" : "url");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancel() {
+    setForm(emptyEvent()); setEditing(null); setPreview("");
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  const busy = saving || uploading;
 
   return (
     <div>
       <Toast msg={toastMsg} isError={toastError} />
       <h2 style={S.sectionTitle}>Events <span style={{ color:"#555", fontSize:16 }}>({items.length} events)</span></h2>
+
       <div style={S.card}>
         <h3 style={S.cardTitle}>{editing ? "✏️ Edit Event" : "➕ Add New Event"}</h3>
-        <Field label="Event Title"><input style={S.input} value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. AfriPot Gala Night" /></Field>
+
+        {/* Title */}
+        <Field label="Event Title">
+          <input style={S.input} value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. AfriPot Gala Night" />
+        </Field>
+
+        {/* Date / Time / Location */}
         <div style={S.grid3}>
-          <Field label="Date"><input style={S.input} type="date" value={form.date} onChange={e => set("date", e.target.value)} /></Field>
-          <Field label="Time"><input style={S.input} type="time" value={form.time} onChange={e => set("time", e.target.value)} /></Field>
-          <Field label="Location"><input style={S.input} value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. KN 51 St, Kigali" /></Field>
+          <Field label="Date">
+            <input style={S.input} type="date" value={form.date} onChange={e => set("date", e.target.value)} />
+          </Field>
+          <Field label="Time">
+            <input style={S.input} type="time" value={form.time} onChange={e => set("time", e.target.value)} />
+          </Field>
+          <Field label="Location">
+            <input style={S.input} value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. KN 51 St, Kigali" />
+          </Field>
         </div>
+
+        {/* Description */}
         <Field label="Description">
           <textarea style={{ ...S.input, minHeight:80, resize:"vertical" }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Describe the event…" />
         </Field>
-        <Field label="Banner Image URL">
-          <ImgBBTip />
-          <input style={S.input} value={form.image} onChange={e => handleImgChange(e.target.value)} placeholder="https://i.ibb.co/xxxxxx/photo.jpg" />
+
+        {/* Image — toggle between file upload and URL */}
+        <Field label="Banner Image">
+          {/* mode toggle */}
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {(["upload","url"] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setImgMode(m)}
+                style={{
+                  padding:"4px 16px", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer",
+                  background: imgMode === m ? "#cc0000" : "transparent",
+                  color:      imgMode === m ? "#fff"    : "#888",
+                  border:     imgMode === m ? "none"    : "1px solid #333",
+                  textTransform:"capitalize",
+                }}
+              >
+                {m === "upload" ? "📁 Upload File" : "🔗 Paste URL"}
+              </button>
+            ))}
+          </div>
+
+          {imgMode === "upload" ? (
+            <div
+              style={{ border:"2px dashed #2a2a2a", borderRadius:8, padding:"20px", textAlign:"center", cursor:"pointer", background:"#0f0f0f" }}
+              onClick={() => fileRef.current?.click()}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display:"none" }}
+                onChange={handleFileChange}
+              />
+              {uploading ? (
+                <p style={{ color:"#888", margin:0, fontSize:13 }}>Uploading…</p>
+              ) : (
+                <>
+                  <p style={{ color:"#555", margin:"0 0 4px", fontSize:24 }}>☁️</p>
+                  <p style={{ color:"#888", margin:0, fontSize:13 }}>Click to choose an image from your computer</p>
+                  <p style={{ color:"#444", margin:"4px 0 0", fontSize:11 }}>JPG, PNG, WEBP · stored in Supabase</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <input
+              style={S.input}
+              value={form.image}
+              onChange={e => handleUrlChange(e.target.value)}
+              placeholder="https://example.com/photo.jpg"
+            />
+          )}
         </Field>
+
+        {/* Preview */}
         {preview && (
-          <div style={{ marginTop:12 }}>
+          <div style={{ marginTop:4, marginBottom:8 }}>
             <p style={{ color:"#666", fontSize:11, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Preview</p>
-            <img src={preview} alt="preview" onError={() => showToast("⚠️ Image URL did not load.", true)} style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%" }} />
+            <img
+              src={preview}
+              alt="preview"
+              onError={() => showToast("⚠️ Image did not load.", true)}
+              style={{ height:160, borderRadius:8, objectFit:"cover", border:"1px solid #2a2a2a", maxWidth:"100%", display:"block" }}
+            />
           </div>
         )}
+
+        {/* Featured checkbox */}
         <label style={{ display:"flex", alignItems:"center", gap:10, marginTop:16, cursor:"pointer" }}>
-          <input type="checkbox" checked={!!form.isFeatured} onChange={e => set("isFeatured", e.target.checked)} style={{ width:18, height:18, accentColor:"#cc0000", cursor:"pointer" }} />
-          <span style={{ color:"#ccc", fontSize:13 }}>Mark as Featured Event</span>
+          <input
+            type="checkbox"
+            checked={!!form.isFeatured}
+            onChange={e => set("isFeatured", e.target.checked)}
+            style={{ width:18, height:18, accentColor:"#cc0000", cursor:"pointer" }}
+          />
+          <span style={{ color:"#ccc", fontSize:13 }}>Mark as Featured Event (shows as the main banner)</span>
         </label>
+
+        {/* Actions */}
         <div style={{ display:"flex", gap:10, marginTop:20 }}>
-          <button onClick={saveItem} style={S.btnPrimary}>{editing ? "Save Changes" : "Create Event"}</button>
-          {editing && <button onClick={cancel} style={S.btnGhost}>Cancel</button>}
+          <button
+            onClick={saveItem}
+            disabled={busy}
+            style={{ ...S.btnPrimary, opacity: busy ? 0.6 : 1, cursor: busy ? "not-allowed" : "pointer" }}
+          >
+            {saving ? "Saving…" : uploading ? "Uploading…" : editing ? "Save Changes" : "Create Event"}
+          </button>
+          {editing && <button onClick={cancel} style={S.btnGhost} disabled={busy}>Cancel</button>}
         </div>
       </div>
+
+      {/* Events list */}
       <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+        {items.length === 0 && (
+          <p style={{ color:"#555", fontSize:13, padding:"20px 0" }}>No events yet. Add one above.</p>
+        )}
         {items.map(ev => (
           <div key={ev.id} style={{ ...S.card, display:"flex", gap:16, padding:16, alignItems:"flex-start", marginBottom:0 }}>
-            <img src={ev.image} alt={ev.title} style={{ width:110, height:74, objectFit:"cover", borderRadius:8, flexShrink:0, border:"1px solid #2a2a2a" }} />
+            {ev.image ? (
+              <img src={ev.image} alt={ev.title} style={{ width:110, height:74, objectFit:"cover", borderRadius:8, flexShrink:0, border:"1px solid #2a2a2a" }} />
+            ) : (
+              <div style={{ width:110, height:74, borderRadius:8, flexShrink:0, background:"#1a1a1a", border:"1px solid #2a2a2a" }} />
+            )}
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <p style={{ margin:0, fontWeight:700, fontSize:14 }}>{ev.title}</p>
@@ -334,8 +491,8 @@ function EventsAdmin({ items, onSave }: { items: Event[]; onSave: (e: Event[]) =
               <p style={{ margin:0, color:"#555", fontSize:12, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as const }}>{ev.description}</p>
             </div>
             <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-              <button onClick={() => editItem(ev)} style={S.btnSm}>Edit</button>
-              <button onClick={() => deleteItem(ev.id)} style={S.btnSmDanger}>Delete</button>
+              <button onClick={() => editItem(ev)} style={S.btnSm} disabled={busy}>Edit</button>
+              <button onClick={() => deleteItem(ev.id)} style={S.btnSmDanger} disabled={busy}>Delete</button>
             </div>
           </div>
         ))}

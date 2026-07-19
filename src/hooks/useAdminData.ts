@@ -2,34 +2,31 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { GalleryItem } from "@/data/galleryData";
 import type { Event } from "@/data/eventsData";
 import type { MenuItem, MenuSection } from "@/data/menuData";
-import eventsJson from "@/data/eventsData.json";
 import { defaultMenuSections } from "@/data/menuData";
 import { fetchGallery, persistGallery } from "@/lib/galleryStore";
+import { fetchEvents, persistEvents, uploadEventImage } from "@/lib/eventsStore";
 
-// ─── localStorage keys (events + menu) ───────────────────────────────────────
-const EVENTS_KEY = "afripot_events";
-const MENU_KEY   = "afripot_menu";
+// ─── localStorage key (menu only — events now live in Supabase) ───────────────
+const MENU_KEY = "afripot_menu";
 
 // ─── in-process pub/sub (instant same-tab updates) ───────────────────────────
 type Listener = () => void;
 const galleryListeners = new Set<Listener>();
+const eventsListeners  = new Set<Listener>();
 
 function notifyGallery() { galleryListeners.forEach(fn => fn()); }
+function notifyEvents()  { eventsListeners.forEach(fn => fn()); }
 
 export function subscribeGallery(fn: Listener): () => void {
   galleryListeners.add(fn);
   return () => galleryListeners.delete(fn);
 }
-
-// ─── localStorage helpers (events + menu) ────────────────────────────────────
-function loadEvents(): Event[] {
-  try {
-    const raw = localStorage.getItem(EVENTS_KEY);
-    if (raw) return JSON.parse(raw) as Event[];
-  } catch {}
-  return eventsJson as Event[];
+export function subscribeEvents(fn: Listener): () => void {
+  eventsListeners.add(fn);
+  return () => eventsListeners.delete(fn);
 }
 
+// ─── localStorage helpers (menu only) ────────────────────────────────────────
 function loadMenu(): MenuSection[] {
   try {
     const raw = localStorage.getItem(MENU_KEY);
@@ -59,38 +56,59 @@ export function useAdminData() {
   const [ready,   setReady]   = useState(false);
 
   useEffect(() => {
-    setEvents(loadEvents());
     setMenu(loadMenu());
-    fetchGallery().then(items => {
-      setGallery(items);
+
+    // Load gallery and events in parallel.
+    // Either can fail gracefully — we still set ready=true so the admin page loads.
+    Promise.allSettled([
+      fetchGallery().then(items => setGallery(items)),
+      fetchEvents().then(items => setEvents(items)),
+    ]).finally(() => {
       setReady(true);
     });
   }, []);
 
+  // ── gallery ──
   const saveGallery = useCallback(async (items: GalleryItem[]): Promise<string | null> => {
     try {
       await persistGallery(items);
       setGallery(items);
-      notifyGallery(); // instant update for any mounted public gallery
+      notifyGallery();
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : String(e);
     }
   }, []);
 
-  const saveEvents = useCallback((items: Event[]): string | null => {
-    const err = trySaveLocal(EVENTS_KEY, items);
-    if (!err) setEvents(items);
-    return err;
+  // ── events ──
+  const saveEvents = useCallback(async (items: Event[]): Promise<string | null> => {
+    try {
+      await persistEvents(items);
+      setEvents(items);
+      notifyEvents();
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
   }, []);
 
+  const uploadImage = useCallback(async (file: File): Promise<{ url: string; error: string | null }> => {
+    try {
+      const url = await uploadEventImage(file);
+      return { url, error: null };
+    } catch (e) {
+      return { url: "", error: e instanceof Error ? e.message : String(e) };
+    }
+  }, []);
+
+  // ── menu ──
   const saveMenu = useCallback((sections: MenuSection[]): string | null => {
     const err = trySaveLocal(MENU_KEY, sections);
     if (!err) setMenu(sections);
     return err;
   }, []);
 
-  return { gallery, events, menu, saveGallery, saveEvents, saveMenu, ready };
+  return { gallery, events, menu, saveGallery, saveEvents, saveMenu, uploadImage, ready };
 }
 
 // ─── public gallery hook ──────────────────────────────────────────────────────
@@ -102,25 +120,21 @@ export function usePublicGallery(): { items: GalleryItem[]; loading: boolean; er
   const mountedRef = useRef(true);
 
   const load = useCallback(() => {
-    fetchGallery().then(data => {
-      if (mountedRef.current) { setItems(data); setError(null); setLoading(false); }
-    }).catch(e => {
-      if (mountedRef.current) { setError(String(e)); setLoading(false); }
-    });
+    fetchGallery()
+      .then(data => {
+        if (mountedRef.current) { setItems(data); setError(null); setLoading(false); }
+      })
+      .catch(e => {
+        if (mountedRef.current) { setError(String(e)); setLoading(false); }
+      });
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     load();
 
-    // Same-tab instant update when admin saves
     const unsub = subscribeGallery(load);
 
-    // Cross-tab update — not needed for API-based store, but keep for safety
-    function onStorage(_e: StorageEvent) { /* no-op */ }
-    window.addEventListener("storage", onStorage);
-
-    // Re-sync when user navigates back to this page/tab
     function onVisible() {
       if (document.visibilityState === "visible") load();
     }
@@ -129,7 +143,6 @@ export function usePublicGallery(): { items: GalleryItem[]; loading: boolean; er
     return () => {
       mountedRef.current = false;
       unsub();
-      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
@@ -139,19 +152,43 @@ export function usePublicGallery(): { items: GalleryItem[]; loading: boolean; er
 
 // ─── public events hook ───────────────────────────────────────────────────────
 
-export function usePublicEvents(): Event[] {
-  const [items, setItems] = useState<Event[]>(() => loadEvents());
+export function usePublicEvents(): { items: Event[]; loading: boolean; error: string | null } {
+  const [items,   setItems]   = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    setItems(loadEvents());
-    function onStorage(e: StorageEvent) {
-      if (e.key === EVENTS_KEY) setItems(loadEvents());
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+  const load = useCallback(() => {
+    fetchEvents()
+      .then(data => {
+        if (mountedRef.current) { setItems(data); setError(null); setLoading(false); }
+      })
+      .catch(e => {
+        if (mountedRef.current) { setError(String(e)); setLoading(false); }
+      });
   }, []);
 
-  return items;
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+
+    // Re-fetch when admin saves (same tab)
+    const unsub = subscribeEvents(load);
+
+    // Re-fetch when user navigates back to this tab
+    function onVisible() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      mountedRef.current = false;
+      unsub();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
+
+  return { items, loading, error };
 }
 
 // ─── public menu hook ─────────────────────────────────────────────────────────

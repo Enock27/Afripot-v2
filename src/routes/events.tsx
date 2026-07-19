@@ -24,7 +24,7 @@ export const Route = createFileRoute("/events")({
 });
 
 function EventsPage() {
-  const upcomingEventsData = usePublicEvents();
+  const { items: upcomingEventsData, loading, error } = usePublicEvents();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   // Auto-sort events: nearest first
@@ -33,6 +33,32 @@ function EventsPage() {
     const dateB = new Date(`${b.date}T${b.time}`);
     return dateA.getTime() - dateB.getTime();
   });
+
+  // Loading state
+  if (loading) return (
+    <div style={styles.pageWrapper}>
+      <SiteHeader />
+      <section style={{ ...styles.heroSection, minHeight: '60vh' }}>
+        <p style={styles.heroEyebrow}>AFRIPOT CUISINE</p>
+        <h1 style={styles.heroHeading}>UPCOMING EVENTS</h1>
+        <div style={styles.heroDivider}></div>
+        <p style={{ ...styles.heroTagline, color: '#555' }}>Loading events…</p>
+      </section>
+      <SiteFooter />
+    </div>
+  );
+
+  // Error state
+  if (error) return (
+    <div style={styles.pageWrapper}>
+      <SiteHeader />
+      <section style={{ ...styles.heroSection, minHeight: '60vh' }}>
+        <h1 style={{ ...styles.heroHeading, fontSize: '2rem' }}>Could not load events</h1>
+        <p style={{ ...styles.heroTagline, color: '#cc0000' }}>{error}</p>
+      </section>
+      <SiteFooter />
+    </div>
+  );
 
   useEffect(() => {
     // Intersection Observer for reveal animations
@@ -120,8 +146,20 @@ function EventsPage() {
                 alt={featuredEvent.title}
                 style={styles.bannerImage}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+                  const img = e.target as HTMLImageElement;
+                  img.style.display = 'none';
+                  const parent = img.parentElement!;
+                  parent.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+                  parent.style.display = 'flex';
+                  parent.style.alignItems = 'center';
+                  parent.style.justifyContent = 'center';
+                  if (!parent.querySelector('.banner-fallback')) {
+                    const label = document.createElement('div');
+                    label.className = 'banner-fallback';
+                    label.textContent = featuredEvent.title;
+                    label.style.cssText = 'color:#fff;font-family:"Julius Sans One",sans-serif;font-size:clamp(1.5rem,4vw,3rem);letter-spacing:0.08em;text-align:center;padding:0 40px;opacity:0.85;';
+                    parent.appendChild(label);
+                  }
                 }}
               />
               <div style={styles.bannerOverlay}></div>
@@ -190,10 +228,22 @@ function EventsPage() {
                     <img 
                       src={event.image} 
                       alt={event.title} 
-                      style={{...styles.cardImage, objectFit: 'contain'}}
+                      style={{...styles.cardImage, objectFit: 'cover', objectPosition: 'center'}}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLElement).parentElement!.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                        const parent = img.parentElement!;
+                        parent.style.background = 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)';
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                        parent.style.justifyContent = 'center';
+                        if (!parent.querySelector('.fallback-label')) {
+                          const label = document.createElement('span');
+                          label.className = 'fallback-label';
+                          label.textContent = event.title;
+                          label.style.cssText = 'color:#fff;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-align:center;padding:0 12px;opacity:0.7;';
+                          parent.appendChild(label);
+                        }
                       }}
                     />
                     <div style={styles.cardDateBadge}>{formatShortDate(event.date)}</div>
@@ -419,13 +469,20 @@ const styles: Record<string, React.CSSProperties> = {
     aspectRatio: '16/9',
     maxHeight: '600px',
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
+    background: 'linear-gradient(135deg, #000000 0%, #1a0000 50%, #CC0000 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   bannerImage: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
-    objectPosition: 'center'
+    objectPosition: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0
   },
   bannerOverlay: {
     position: 'absolute',
