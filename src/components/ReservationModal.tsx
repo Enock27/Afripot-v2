@@ -13,6 +13,7 @@ import {
   User,
 } from "lucide-react";
 import emailjs from "@emailjs/browser";
+import { getAssetUrl } from "@/lib/assetsStore";
 
 interface ReservationModalProps {
   isOpen: boolean;
@@ -216,7 +217,7 @@ export function ReservationModal({ isOpen, onClose }: ReservationModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/20 shrink-0">
           <div className="flex items-center gap-2">
-            <img src="/src/assets/AfriPot_logo2.png" alt="AfriPot" className="h-8 w-auto" />
+            <img src={getAssetUrl("logo")} alt="AfriPot" className="h-8 w-auto" />
             <span className="text-sm font-serif text-white font-semibold">AfriPot</span>
           </div>
           <button

@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import diningRoom from "@/assets/afri5.jpg";
-import interior from "@/assets/afri4.jpg";
+import { useAssets } from "@/lib/assetsStore";
 
 export const Route = createFileRoute("/about")({
   component: AboutPage,
@@ -15,6 +14,8 @@ export const Route = createFileRoute("/about")({
 });
 
 function AboutPage() {
+  const assets = useAssets();
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
@@ -42,8 +43,8 @@ function AboutPage() {
 
       <section className="px-4 sm:px-6 md:px-12 pb-32">
         <div className="mx-auto max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <img src={interior} alt="Wine staircase" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
-          <img src={diningRoom} alt="Dining room" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
+          <img src={assets.interior} alt="Wine staircase" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
+          <img src={assets.diningRoom} alt="Dining room" loading="lazy" className="w-full h-auto shadow-elegant rounded-sm" />
         </div>
       </section>
 

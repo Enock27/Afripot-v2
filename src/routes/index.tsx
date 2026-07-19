@@ -7,17 +7,8 @@ import { ScrollReveal } from "@/components/ScrollReveal";
 import { PartnersSection } from "@/components/PartnersSection";
 import { useState, useEffect, useRef } from "react";
 import emailjs from "@emailjs/browser";
-import interiorStairs from "@/assets/Afri3.jpg";
-import dishPlate from "@/assets/afri2.jpg";
-import suiteGarden from "@/assets/suite-garden.jpg";
-import logo from "@/assets/AfriPot_logo2.png";
-import backgroundHero from "@/assets/BackgroundHero1.jpg";
+import { useAssets } from "@/lib/assetsStore";
 import HEROvid from "@/assets/HEROvid.mp4";
-import chomaImg from "@/assets/choma.jpg";
-import luwomboImg from "@/assets/Chicken_Luwombo.jpg";
-import tilapiaImg from "@/assets/TILAPIA.jpg";
-import grillsImg from "@/assets/mixedgrills.jpg";
-import riceImg from "@/assets/AfripotRice.jpg";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -25,15 +16,16 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [selectedDish, setSelectedDish] = useState("mbuzi");
+  const assets = useAssets();
 
   // Dish carousel component
   const DishCarousel = ({ selectedDish }: { selectedDish: string }) => {
     const dishes = {
-      mbuzi: { img: chomaImg, alt: "Mbuzi Choma" },
-      luwombo: { img: luwomboImg, alt: "Chicken Luwombo" },
-      tilapia: { img: tilapiaImg, alt: "Grilled Fish Tilapia" },
-      grills: { img: grillsImg, alt: "Mixed Grills" },
-      rice: { img: riceImg, alt: "AfriPot Rice" },
+      mbuzi:   { img: assets.chomaImg,   alt: "Mbuzi Choma" },
+      luwombo: { img: assets.luwomboImg, alt: "Chicken Luwombo" },
+      tilapia: { img: assets.tilapiaImg, alt: "Grilled Fish Tilapia" },
+      grills:  { img: assets.grillsImg,  alt: "Mixed Grills" },
+      rice:    { img: assets.riceImg,    alt: "AfriPot Rice" },
     };
 
     const currentDish = dishes[selectedDish as keyof typeof dishes] || dishes.mbuzi;
@@ -140,7 +132,7 @@ function Index() {
         >
           <div className="relative">
             <img 
-              src={logo} 
+              src={assets.logo} 
               alt="AfriPot logo" 
               loading="eager"
               decoding="async"
@@ -164,7 +156,7 @@ function Index() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
             {/* Left Image */}
             <ScrollReveal>
-              <img src={interiorStairs} alt="Antique staircase and wine cabinet" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
+              <img src={assets.interiorStairs} alt="Antique staircase and wine cabinet" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
             </ScrollReveal>
 
             {/* Center Content */}
@@ -188,7 +180,7 @@ function Index() {
 
             {/* Right Image */}
             <ScrollReveal>
-              <img src={dishPlate} alt="Plated signature dish" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
+              <img src={assets.dishPlate} alt="Plated signature dish" loading="lazy" decoding="async" className="w-full aspect-[3/4] object-cover shadow-elegant" />
             </ScrollReveal>
           </div>
         </div>
@@ -200,7 +192,7 @@ function Index() {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url(${backgroundHero})`,
+            backgroundImage: `url(${assets.heroBackground})`,
             backgroundAttachment: 'fixed',
             backgroundPosition: 'center'
           }}

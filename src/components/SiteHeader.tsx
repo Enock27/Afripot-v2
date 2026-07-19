@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import logo from "@/assets/AfriPot_logo2.png";
+import { getAssetUrl } from "@/lib/assetsStore";
+
+const logo = getAssetUrl("logo");
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);

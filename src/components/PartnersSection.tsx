@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import gsap from "@/lib/gsap-config";
-import staffordLogo from "@/assets/STAFFORD COFFEE BREWERS LOGO.png";
-import anithLogo from "@/assets/Anitha.png";
-import afriPotLogo from "@/assets/AfriPot_logo2.png";
+import { getAssets } from "@/lib/assetsStore";
+
+const _assets = getAssets();
+const staffordLogo = _assets.staffordLogo;
+const anithLogo    = _assets.anithaLogo;
+const afriPotLogo  = _assets.logo;
 
 interface PartnerLogoProps {
   src: string;

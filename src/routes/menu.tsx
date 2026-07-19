@@ -6,12 +6,7 @@ import { MenuCarousel } from "@/components/MenuCarousel";
 import { useState, useEffect } from "react";
 import * as beveragesData from "@/data/beveragesData";
 import { usePublicMenu } from "@/hooks/useAdminData";
-
-// Food images for the hero gallery
-import fd3 from "@/assets/fd3.jpg";
-import fd4 from "@/assets/fd4.jpg";
-import localfood1 from "@/assets/localfood1.jpg";
-import pilau from "@/assets/pilau.jpg";
+import { getAssets } from "@/lib/assetsStore";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
@@ -99,8 +94,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Carousel images ─────────────────────────────────────────────────────────
-
-const carouselImages = [fd3, fd4, localfood1, pilau];
+const _a = getAssets();
+const carouselImages = [_a.fd3, _a.fd4, _a.localfood1, _a.pilau];
 
 function HeroCarousel() {
   const [current, setCurrent] = useState(0);
