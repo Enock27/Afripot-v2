@@ -34,6 +34,30 @@ function EventsPage() {
     return dateA.getTime() - dateB.getTime();
   });
 
+  // ALL hooks must come before any conditional returns — React rule
+  useEffect(() => {
+    if (loading || error || upcomingEvents.length === 0) return;
+
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px"
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          (entry.target as HTMLElement).style.opacity = "1";
+          (entry.target as HTMLElement).style.transform = "translateY(0)";
+        }
+      });
+    }, observerOptions);
+
+    const revealElements = document.querySelectorAll(".reveal");
+    revealElements.forEach((el) => observer.observe(el));
+
+    return () => { observer.disconnect(); };
+  }, [upcomingEvents, loading, error]);
+
   // Loading state
   if (loading) return (
     <div style={styles.pageWrapper}>
@@ -59,30 +83,6 @@ function EventsPage() {
       <SiteFooter />
     </div>
   );
-
-  useEffect(() => {
-    // Intersection Observer for reveal animations
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: "0px 0px -50px 0px"
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          (entry.target as HTMLElement).style.opacity = "1";
-          (entry.target as HTMLElement).style.transform = "translateY(0)";
-        }
-      });
-    }, observerOptions);
-
-    const revealElements = document.querySelectorAll(".reveal");
-    revealElements.forEach((el) => observer.observe(el));
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [upcomingEvents]);
 
   // The first event in the sorted list is always the featured one
   const featuredEvent = upcomingEvents[0];
